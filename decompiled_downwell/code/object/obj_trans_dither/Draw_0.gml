@@ -1,0 +1,1 @@
+drawOnSurface(global.surfaceFx);

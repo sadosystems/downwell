@@ -1,0 +1,12 @@
+dFlash = 1;
+flashing = 0;
+image_speed = 0.5;
+image_index = 0;
+xx = x;
+yy = y;
+ysp = 0;
+xsp = 0;
+ugrav = 0.05;
+maxsp = 3;
+lightFlashing = 1;
+alarm[0] = 60;

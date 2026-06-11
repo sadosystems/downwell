@@ -1,0 +1,2 @@
+drawShade();
+draw_self();

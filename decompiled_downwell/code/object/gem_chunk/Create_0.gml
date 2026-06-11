@@ -1,0 +1,10 @@
+material = "rock";
+image_speed = 0;
+wallHp = 30;
+prvWallHp = wallHp;
+destroyed = 0;
+flashing = 0;
+opened = 0;
+obtained = 0;
+alarm[1] = irandom_range(30, 60);
+alarm[2] = irandom_range(180, 360);

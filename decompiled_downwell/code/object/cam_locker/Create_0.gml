@@ -1,0 +1,2 @@
+pointerx = x;
+pointery = y;

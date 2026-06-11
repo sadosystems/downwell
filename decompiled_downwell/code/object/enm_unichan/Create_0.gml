@@ -1,0 +1,13 @@
+event_inherited();
+normalSpr = 327;
+stunSpr = 328;
+deadSpr = 329;
+mask_index = normalSpr;
+ehp = 10;
+xsp = 0;
+ysp = 0;
+xx = x;
+yy = y;
+money = 1;
+imgSp = 0.05;
+image_speed = imgSp;

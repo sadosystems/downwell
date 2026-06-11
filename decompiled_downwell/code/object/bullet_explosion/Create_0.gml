@@ -1,0 +1,18 @@
+event_inherited();
+bdmg = 50;
+bConsistent = 1;
+bWave = 1;
+allSet = 1;
+damageStart = 0;
+damageStartFrame = 0;
+damageEnd = 0;
+damageEndFrame = 5;
+sprite_index = spSplosion1;
+scrSShake(6, 8);
+soundPlayOL(choose(91, 92, 93), 60, 0, 1, "gunwall");
+momentDelay();
+imgSp = random_range(0.3, 0.4);
+image_speed = imgSp;
+image_xscale = choose(1, -1);
+y += 8;
+image_angle = 180;

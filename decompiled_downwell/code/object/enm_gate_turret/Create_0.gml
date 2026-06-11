@@ -1,0 +1,16 @@
+event_inherited();
+normalSpr = 252;
+stunSpr = 253;
+deadSpr = 291;
+bulletImmune = 1;
+ehp = 15;
+xsp = 0;
+ysp = 0;
+shotCount = 0;
+emitTimer = 60;
+alarm[1] = emitTimer;
+xx = x;
+yy = y;
+money = 6;
+imgSp = 0.1;
+image_speed = imgSp;

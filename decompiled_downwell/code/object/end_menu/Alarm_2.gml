@@ -1,0 +1,2 @@
+ResetPlayer();
+BackToSurface();

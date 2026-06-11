@@ -1,0 +1,1 @@
+global.pauseInput = 1;

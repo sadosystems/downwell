@@ -1,0 +1,15 @@
+event_inherited();
+normalSpr = sprite_index;
+stunSpr = sprite_index;
+deadSpr = 291;
+mask_index = normalSpr;
+ehp = 15;
+xsp = 0;
+ysp = 0;
+accl = 0.075;
+maxsp = 1;
+xx = x;
+yy = y;
+money = 1;
+imgSp = 0.1;
+image_speed = imgSp;

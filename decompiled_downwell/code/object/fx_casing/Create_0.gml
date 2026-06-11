@@ -1,0 +1,12 @@
+xsp = irandom_range(-3, -1) * sign(objPlayer_n.image_xscale);
+ysp = choose(0, -1, -2, -3);
+ugrav = 0.08;
+ugravhard = 0.2;
+image_speed = choose(-0.5, -0.3, 0, 0.3, 0.5);
+alarm[0] = 120;
+alarm[1] = 60;
+alarm[2] = 30;
+dissapearing = 0;
+dflash = -1;
+bounceSnd = 14;
+noTouch = 1;

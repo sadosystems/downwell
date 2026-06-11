@@ -1,0 +1,1 @@
+inputWait = 0;

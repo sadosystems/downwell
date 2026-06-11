@@ -1,0 +1,10 @@
+soundPlay(360, 80, 0, 1);
+myLocker = instance_find(camLocker, 0);
+myCam = instance_find(parentCamera, 0);
+myCam.roomEnd = -1;
+myLockerYsp = 0;
+titleysp = 0.5;
+ysp = 0;
+y = myLocker.pointery;
+blackSet = 0;
+titley = 300;

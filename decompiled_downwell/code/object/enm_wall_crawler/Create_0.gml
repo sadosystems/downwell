@@ -1,0 +1,16 @@
+event_inherited();
+normalSpr = sprite_index;
+stunSpr = sprite_index;
+deadSpr = 291;
+mask_index = normalSpr;
+crawling = 0;
+ehp = 15;
+xsp = 0;
+ysp = 0;
+direction = 0;
+xx = x;
+yy = y;
+money = 1;
+imgSp = 0.1;
+image_speed = imgSp;
+movesp = random_range(1, 16);

@@ -1,0 +1,11 @@
+breakText = 0;
+xsp = random_range(-0.5, -0.25) * sign(objPlayer_n.image_xscale);
+ysp = -1;
+alarm[0] = 20;
+xx = x;
+yy = y;
+image_speed = 0.4;
+dFlash = 1;
+flashing = 0;
+ugrav = 0.025;
+ugravhard = 0.2;

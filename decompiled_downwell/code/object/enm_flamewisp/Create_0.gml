@@ -1,0 +1,12 @@
+event_inherited();
+normalSpr = 289;
+stunSpr = 290;
+deadSpr = 291;
+ehp = 15;
+xsp = 0;
+ysp = 0;
+xx = x;
+yy = y;
+money = 6;
+imgSp = 0.1;
+image_speed = imgSp;

@@ -1,0 +1,14 @@
+xsp = 0;
+ysp = 0;
+meowed = 0;
+meow = 0;
+objPlayer_n.atPit = 1;
+walksp = 0.5;
+xdir = choose(1, -1);
+image_xscale = xdir;
+walking = -1;
+pickedUp = 0;
+xx = x;
+yy = y;
+alarm[0] = 120;
+image_speed = 0.3;

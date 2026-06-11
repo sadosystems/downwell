@@ -1,0 +1,15 @@
+event_inherited();
+bulPropertyCheck();
+image_speed = 0;
+allSet = 0;
+animation = 0;
+image_index = 0;
+xsp = 0;
+ysp = 0;
+maxsp = 8;
+bSpeed += random_range(-global.pBulSpecial[0], 0);
+declSp = 0.8;
+decelerate = 0;
+decelerateSp = 0;
+decTimer = global.pBulSpecial[1];
+alarm[0] = decTimer;

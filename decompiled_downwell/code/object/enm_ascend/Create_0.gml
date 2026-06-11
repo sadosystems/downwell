@@ -1,0 +1,18 @@
+event_inherited();
+normalSpr = 160;
+stunSpr = 290;
+deadSpr = 291;
+mask_index = normalSpr;
+ehp = 15;
+xsp = 0;
+ysp = -1;
+xasc = 0.01;
+shot = 0;
+memPlx = room_width / 2;
+ascRate = 0.03;
+descent = 0;
+xx = x;
+yy = y;
+money = 1;
+imgSp = 0.1;
+image_speed = imgSp;

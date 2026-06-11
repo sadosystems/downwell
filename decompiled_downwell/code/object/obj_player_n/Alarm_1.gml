@@ -1,0 +1,1 @@
+global.playerDamaged = 0;

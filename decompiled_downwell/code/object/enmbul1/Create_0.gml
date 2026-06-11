@@ -1,0 +1,15 @@
+sprite_index = choose(sprEbulChip);
+ebDir = 45;
+ebSpeed = 0.5;
+ebDmg = 1;
+ebDist = 64;
+accl = 0.025;
+maxsp = 2;
+imageAngled = 0;
+xsp = 0;
+ysp = -1;
+allSet = 0;
+xx = x;
+yy = y;
+active = 1;
+image_speed = 0.2;

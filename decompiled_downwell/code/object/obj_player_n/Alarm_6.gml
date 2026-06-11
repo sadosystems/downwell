@@ -1,0 +1,1 @@
+hardLandJump = 0;

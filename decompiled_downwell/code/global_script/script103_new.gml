@@ -1,0 +1,48 @@
+function script103_new()
+{
+    scrStartPat3();
+    scrEndPat3();
+    scrLeftPat3();
+    scrRightPat3();
+    scrShopPat3();
+    i = 0;
+    partMain[i] = "\r\n\t.........\r\n\t.........\r\n\t.---..BBB\r\n\t......BB1\r\n\tB....BBB1\r\n\tB.d....B1\r\n\tBBBBBB.B1\r\n\t11BBBBBB1\r\n\t11B...BBB\r\n\t1B......B\r\n\tBB...b..B\r\n\tB.......B\r\n\t";
+    i += 1;
+    partMain[i] = "\r\n\t.........\r\n\t.........\r\n\t..b......\r\n\t......BBB\r\n\t......BBB\r\n\tBB..d.BBB\r\n\tBB.BB1111\r\n\tBBBBB1111\r\n\tB.....BBB\r\n\t.......BB\r\n\t...---...\r\n\t.........";
+    i += 1;
+    partMain[i] = "\r\n\t.........\r\n\t....BB...\r\n\t...BBB...\r\n\tB...BBBBB\r\n\tBB.....d.\r\n\t1BBBBBBBB\r\n\t1B.....BB\r\n\t1BB.BB.BB\r\n\tBBBBBBBBB\r\n\tBBBB....B\r\n\t....BBBBB\r\n\t.--......";
+    i += 1;
+    partMain[i] = "\r\n\t.........\r\n\tB........\r\n\tB......d.\r\n\tBBBBBB...\r\n\tBB...BBBB\r\n\tB...BBBBB\r\n\tBBBBBBBBB\r\n\t...BBBBBB\r\n\tBBBBBBBBB\r\n\tBB....BBB\r\n\t...BBBBBB\r\n\tBBBBBB...\r\n\t";
+    i += 1;
+    partMain[i] = "\r\n\t.........\r\n\t...b...BB\r\n\tB..--..BB\r\n\tBB.....BB\r\n\tBBBB....B\r\n\t111B....B\r\n\tBBBBBBBBB\r\n\tBB......B\r\n\tB....--.B\r\n\t.........\r\n\t";
+    i += 1;
+    partMain[i] = "\r\n\t.........\r\n\t....BBBBB\r\n\tBBBBB....\r\n\tBBBBBBBBB\r\n\tB.-....11\r\n\tB......11\r\n\tB...--...\r\n\t.........";
+    i += 1;
+    partMain[i] = "\r\n\t......-..\r\n\t--.......\r\n\t..BBBBBBB\r\n\t..BBBB...\r\n\tBBBBBB..B\r\n\tBBBBB...B\r\n\t....BBBBB\r\n\t..BBBB...";
+    i += 1;
+    partMain[i] = "\r\n\t.........\r\n\tBBBB...BB\r\n\tBBBBB.BBB\r\n\tBBBBBBBBB\r\n\tBBB...BBB\r\n\tBBB.-....\r\n\tBBB......\r\n\t.BBBBBBBB";
+    i += 1;
+    partMain[i] = "\r\n\t.........\r\n\t11.......\r\n\t11......1\r\n\t1BBBBBBB1\r\n\t11.....11\r\n\t1..BBBB11\r\n\t1BBB.....\r\n\t.........";
+    i += 1;
+    partMain[i] = "\r\n\t.........\r\n\t1BBBBBBBB\r\n\t1........\r\n\tBBBBBBBB1\r\n\t11.....11\r\n\t1......1.\r\n\t1........\r\n\t.........";
+    i += 1;
+    partMain[i] = "\r\n\t.......11\r\n\t1BBBBBB11.\r\n\t11BB..111\r\n\t11.BBBBB1\r\n\t11.....11\r\n\t1..BBBB11\r\n\t1BBB.....\r\n\t.........";
+    i += 1;
+    partMain[i] = "\r\n\t.........\r\n\tBBBB.....\r\n\t...BBBBBB\r\n\t...B...BB\r\n\t...B..BBB\r\n\tBBBBB.BBB\r\n\t....BBBBB\r\n\t.......BB\r\n\t........B\r\n\t.........";
+    i += 1;
+    partMain[i] = "\r\n\t.........\r\n\t..BB.....\r\n\t..BB.....\r\n\tBBBBBBBBB\r\n\t.BBBBBBB.\r\n\t..11111BB\r\n\t.........\r\n\t.........\r\n\t....BBBBB\r\n\t.........";
+    i += 1;
+    partMain[i] = "\r\n\t........1\r\n\t111....11\r\n\t..1BBB111\r\n\t111BBB11.\r\n\t111BBB11.\r\n\t111BBB11.\r\n\t.1.BBB111\r\n\t11.......\r\n\t.........\r\n\t.........";
+    i += 1;
+    partMain[i] = "\r\n\t..BBBBBBB\r\n\tBBB......\r\n\t...BBBBB.\r\n\t.......BB\r\n\t..BBBBBBB\r\n\t.BB....BB\r\n\tBB....BBB\r\n\t......BBB\r\n\t.........\r\n\t.........";
+    i += 1;
+    partMain[i] = "\r\n\t.........\r\n\tBBBBBBB..\r\n\t.....BBBB\r\n\t....BB...\r\n\tBBBBB....\r\n\t....B....\r\n\tBBBBB....\r\n\t....BBBBB\r\n\t.........\r\n\t.........";
+    i += 1;
+    partMain[i] = "\r\n\t....BBBBB\r\n\tBBBBB....\r\n\t1111BB...\r\n\t11111BBBB\r\n\t11111...B\r\n\t......BBB\r\n\tBBBBBBB..\r\n\t.........";
+    i += 1;
+    partMain[i] = "\r\n\t.........\r\n\t.........\r\n\t.BBBBBBB.\r\n\tBB.B...B.\r\n\t...BB..BB\r\n\tBBBBBB.BB\r\n\tBBBBBBBBB\r\n\t.B.B.BBBB\r\n\t.B...B...\r\n\t.B.......";
+    i += 1;
+    partMain[i] = "\r\n\t.........\r\n\tBBBBBBBBB\r\n\t....BBBBB\r\n\t......BBB\r\n\t.......BB\r\n\t..BBBBBBB\r\n\tBBBB.....\r\n\tBB.......\r\n\tBBB......\r\n\tBBBBB....";
+    partMain[100] = i;
+    i = 0;
+}

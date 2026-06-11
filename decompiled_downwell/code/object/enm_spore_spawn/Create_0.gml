@@ -1,0 +1,16 @@
+event_inherited();
+emitTimer = 90;
+alarm[1] = emitTimer;
+shooting = 0;
+normalSpr = 306;
+stunSpr = 308;
+deadSpr = 309;
+cola = 1;
+ehp = 110;
+xsp = 0;
+ysp = 0;
+xx = x;
+yy = y;
+money = 6;
+imgSp = 0.2;
+image_speed = imgSp;

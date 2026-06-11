@@ -1,0 +1,1 @@
+bulletThrough = 0;

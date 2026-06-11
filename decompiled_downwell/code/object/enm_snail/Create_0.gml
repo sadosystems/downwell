@@ -1,0 +1,12 @@
+event_inherited();
+ehp = 20;
+allSet = 0;
+xsp = 0;
+ysp = choose(0.1, -0.1);
+prepare = 0;
+xx = x;
+yy = y;
+money = 24;
+imgSp = 0.1;
+image_speed = imgSp;
+alarm[1] = 60;

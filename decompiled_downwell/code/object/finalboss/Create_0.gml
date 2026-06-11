@@ -1,0 +1,55 @@
+event_inherited();
+myRumble = -1;
+myCam = instance_find(parentCamera, 0);
+myCam.roomEnd = y - 48;
+growlShake = 1;
+bossShotCount = 0;
+
+if (!global.hardMode)
+    bossShotMax = 0;
+else
+    bossShotMax = 1;
+
+eyex = x;
+global.fightStarted = 0;
+opening = 0;
+slowDown = 0;
+stateSprite = 667;
+outerSprite = stateSprite;
+stateBackSprite = 672;
+stateFrontSprite = 672;
+backSprite = stateBackSprite;
+frontSprite = stateFrontSprite;
+powan = 0;
+bulletThrough = 0;
+shotCount = 0;
+shotMax = 3;
+shotInterval = 5;
+ehpMax = 250000;
+ehp = ehpMax;
+endExplosion = -1;
+ouchAmt = 220;
+threshold = ouchAmt * 4;
+state = 2;
+spawnArea = 1;
+spawnEnemy = 115;
+accumDamage = 0;
+xsp = 0;
+ysp = 0;
+vel = random_range(1, 1.5);
+xx = x;
+yy = y;
+hitStun = 0;
+movesp = 0.3;
+maxsp = movesp;
+acclamt = 0.05;
+dcclamt = 0.01;
+moyacone = 10;
+rotatesp = 3;
+ang16 = 22.5;
+direction = point_direction(x, y, global.plx, global.ply);
+playerDir = direction;
+money = 4;
+active = 1;
+imgSp = 0.25;
+image_speed = imgSp;

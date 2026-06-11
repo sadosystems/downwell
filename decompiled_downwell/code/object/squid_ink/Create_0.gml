@@ -1,0 +1,14 @@
+imgSp = random_range(0.15, 0.2);
+sprite_index = sprFxPoisonSmoke;
+scale = random_range(0.2, 1);
+image_xscale = scale;
+image_yscale = scale;
+mask_index = maskCircleS;
+image_speed = imgSp;
+direction = 0;
+xsp = 0;
+ysp = 0;
+movesp = 1;
+xx = x;
+yy = y;
+allSet = 0;

@@ -1,0 +1,11 @@
+event_inherited();
+image_speed = 0.1;
+speaking = 0;
+xx = x;
+yy = y;
+speakTimer = 0;
+speakAt = 60;
+npcDialogue = "want hp?";
+answer[0] = "yeah";
+answer[1] = "nope";
+choice[0] = -1;

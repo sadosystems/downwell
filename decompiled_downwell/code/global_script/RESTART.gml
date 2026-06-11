@@ -1,0 +1,5 @@
+function RESTART()
+{
+    ResetPlayer();
+    BackToSurface();
+}

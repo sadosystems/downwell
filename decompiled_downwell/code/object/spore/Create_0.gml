@@ -1,0 +1,9 @@
+allSet = 0;
+xsp = 0;
+ysp = 0;
+xx = x;
+yy = y;
+ugrav = 0.02;
+sporeSpeed = 1.5;
+sporeDir = irandom(359);
+image_speed = 0.2;

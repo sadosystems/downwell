@@ -1,0 +1,12 @@
+xsp = random_range(-2, 2);
+ysp = random_range(-0.5, 1);
+ugrav = 0.08;
+ugravhard = 0.1;
+image_speed = choose(-0.5, -0.3, 0, 0.3, 0.5);
+image_index = random(7);
+alarm[0] = 30;
+alarm[1] = 15;
+alarm[2] = 7;
+dissapearing = 0;
+dflash = -1;
+noTouch = 1;

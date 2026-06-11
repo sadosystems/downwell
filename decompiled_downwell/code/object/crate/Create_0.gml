@@ -1,0 +1,12 @@
+material = "metal";
+wallHp = 1;
+opened = 0;
+image_speed = 0.5;
+image_index = 0;
+xx = x;
+yy = y;
+ysp = 0;
+xsp = 0;
+ugrav = 0.1;
+maxsp = 2;
+stomped = 0;

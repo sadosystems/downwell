@@ -1,0 +1,35 @@
+function bStatUpdate(arg0, arg1)
+{
+    bnum = arg0;
+    blvl = arg1;
+    global.pBulName = global.bStatName[bnum];
+    global.pBulGunSprite = global.bStatGunSprite[bnum];
+    global.pBulObject = global.bStatObject[bnum][blvl];
+    global.pBulSprite = global.bStatBulletSprite[bnum][blvl];
+    global.pBulSound = global.bStatSound[bnum][blvl];
+    global.pBulMuzzle = global.bStatMuzzle[bnum][blvl];
+    global.pBulConRate = global.bStatConRate[bnum][blvl];
+    global.pBulRof = global.bStatRof[bnum][blvl];
+    global.pBulRecoil = global.bStatRecoil[bnum][blvl];
+    global.pBulScreenShake = global.bStatScreenShake[bnum][blvl];
+    global.pBulScreenShakeDur = global.bStatScreenShakeDur[bnum][blvl];
+    global.pBulDelayKill = global.bStatDelayKill[bnum][blvl];
+    global.pBulBurst = global.bStatBurst[bnum][blvl];
+    global.pBulBurstRate = global.bStatBurstRate[bnum][blvl];
+    global.pBulBurstAmount = global.bStatBurstAmount[bnum][blvl];
+    global.pBulDamage = global.bStatDamage[bnum][blvl];
+    global.pBulSpeed = global.bStatSpeed[bnum][blvl];
+    global.pBulAccuracy = global.bStatAccuracy[bnum][blvl];
+    global.pBulPierce = global.bStatPierce[bnum][blvl];
+    global.pBulWave = global.bStatWave[bnum][blvl];
+    global.pBulExplode = global.bStatExplode[bnum][blvl];
+    global.pBulSpecial[0] = global.bStatRangeRandom[bnum][blvl];
+    global.pBulSpecial[1] = global.bStatRangeTimer[bnum][blvl];
+    global.pBulSpType = global.bStatSpType[bnum][blvl];
+    global.pBulSp1 = global.bStatSp1[bnum][blvl];
+    global.pBulSp2 = global.bStatSp2[bnum][blvl];
+    global.pBulSp3 = global.bStatSp3[bnum][blvl];
+    global.aimAngleAccl = global.bStatAimAngleAccl[bnum][blvl];
+    global.aimAngleDccl = global.bStatAimAngleDccl[bnum][blvl];
+    global.aimAngleLimit = global.bStatAimAngleLimit[bnum][blvl];
+}

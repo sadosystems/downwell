@@ -1,0 +1,1 @@
+objTeleportMain.titleOk = 1;

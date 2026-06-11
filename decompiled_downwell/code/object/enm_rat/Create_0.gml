@@ -1,0 +1,11 @@
+event_inherited();
+ehp = 15;
+xsp = 0.8;
+ysp = 0;
+xx = x;
+yy = y;
+money = 6;
+imgSp = 0.3;
+image_speed = imgSp;
+grounded = 1;
+active = 1;

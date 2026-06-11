@@ -1,0 +1,10 @@
+event_inherited();
+xsp = random_range(0.5, 2);
+ysp = random_range(-4, -1);
+ugrav = 0.1;
+ebdmg = 1;
+xx = x;
+yy = y;
+active = 1;
+objHp = 1;
+imgSp = random_range(0.05, 0.5);

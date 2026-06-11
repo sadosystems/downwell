@@ -1,0 +1,12 @@
+event_inherited();
+image_speed = 0.2;
+speaking = 0;
+xx = x;
+yy = y;
+speakTimer = 0;
+speakAt = 60;
+answer[0] = "yes!";
+answer[1] = "nope";
+choice[0] = -1;
+teleportTo = 2;
+npcDialogue = "(debug purposes)#teleport to area " + string(teleportTo) + "?";

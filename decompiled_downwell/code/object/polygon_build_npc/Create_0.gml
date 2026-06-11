@@ -1,0 +1,11 @@
+event_inherited();
+image_speed = 0.1;
+speaking = 0;
+xx = x;
+yy = y;
+speakTimer = 0;
+speakAt = 60;
+npcDialogue = "Wow you're very#good at this#game!\\This is pretty#much the end#of content.\\Thank you for#playing!#:)";
+textOver = 0;
+checkThis = 0;
+speakDelay = 0;

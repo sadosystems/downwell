@@ -1,0 +1,15 @@
+event_inherited();
+bulletImmune = 1;
+mask_index = sprite_index;
+ehp = 5;
+money = 14;
+xsp = 0.25;
+ysp = 0;
+walking = choose(1, -1);
+alarm[1] = irandom_range(60, 120);
+xx = x;
+yy = y;
+imgSp = 0.15;
+image_speed = imgSp;
+grounded = 1;
+active = 1;

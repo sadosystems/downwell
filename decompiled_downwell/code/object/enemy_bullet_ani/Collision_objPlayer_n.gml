@@ -1,0 +1,1 @@
+scrTypicalDamage(bdmg, bimpactx, bimpacty);

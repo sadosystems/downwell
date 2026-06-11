@@ -1,0 +1,10 @@
+material = "metal";
+image_speed = 0;
+wallHp = 1000000;
+prvWallHp = wallHp;
+keeper = 0;
+storedItem = 0;
+xsp = 0;
+opened = 0;
+destroyed = 0;
+flashing = 0;

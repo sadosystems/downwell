@@ -1,0 +1,2 @@
+if (damageStart && !damageEnd)
+    scrTypicalExplosionDamage();

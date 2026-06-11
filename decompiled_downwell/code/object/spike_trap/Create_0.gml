@@ -1,0 +1,10 @@
+event_inherited();
+material = "metal";
+image_speed = 0;
+allSet = 0;
+rusty = 0;
+spikeOut = 0;
+spikeImage = 0;
+shink = 0;
+wallHp = 100;
+activated = 0;

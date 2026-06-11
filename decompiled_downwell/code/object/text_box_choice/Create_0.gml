@@ -1,0 +1,16 @@
+textShow = 0;
+inputTextAt = 0;
+textAmtTimer = 1;
+alarm[0] = textAmtTimer;
+pageTotal = 0;
+pageCurrent = 0;
+nextPageOk = 0;
+textString = "Here is a question\\answer?";
+choiceOption[0] = "yes";
+choiceOption[1] = "no";
+returnToSender = -1;
+decisionNumber = 0;
+showChoice = 0;
+cursorAt = 0;
+textLength = string_length(textString);
+drawText = "";

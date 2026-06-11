@@ -1,0 +1,18 @@
+event_inherited();
+normalSpr = 625;
+stunSpr = 625;
+deadSpr = 291;
+bouncing = 0;
+jumpsp = -4;
+emitTimer = 60;
+alarm[2] = emitTimer;
+ehp = 15;
+xsp = 0.8;
+ysp = 0;
+xx = x;
+yy = y;
+money = 6;
+imgSp = 0.3;
+image_speed = imgSp;
+grounded = 1;
+active = 1;

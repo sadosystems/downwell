@@ -1,0 +1,1 @@
+showSkipText = 0;

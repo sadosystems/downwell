@@ -1,0 +1,111 @@
+#version 120
+#define LOWPREC 
+#define lowp
+#define mediump
+#define highp
+#define precision
+// Uniforms look like they're shared between vertex and fragment shaders in GLSL, so we have to be careful to avoid name clashes
+
+uniform sampler2D gm_BaseTexture;
+
+uniform bool gm_PS_FogEnabled;
+uniform vec4 gm_FogColour;
+uniform bool gm_AlphaTestEnabled;
+uniform float gm_AlphaRefValue;
+
+void DoAlphaTest(vec4 SrcColour)
+{
+	if (gm_AlphaTestEnabled)
+	{
+		if (SrcColour.a <= gm_AlphaRefValue)
+		{
+			discard;
+		}
+	}
+}
+
+void DoFog(inout vec4 SrcColour, float fogval)
+{
+	if (gm_PS_FogEnabled)
+	{
+		SrcColour = mix(SrcColour, gm_FogColour, clamp(fogval, 0.0, 1.0)); 
+	}
+}
+
+#define _YY_GLSL_ 1
+varying vec2 v_vTexcoord;
+varying vec4 v_vColour;
+
+void main()
+{
+
+  vec2 texCoord = v_vTexcoord;
+  vec2 texLeft = texCoord;
+  vec2 texRight = texCoord;
+  vec4 colour;
+  vec4 colourLeft;
+  vec4 colourRight;
+  vec3 red = vec3(1.0,0.0,0.0);
+  vec3 white = vec3(1.0,1.0,1.0);
+  vec3 black = vec3(0.0,0.0,0.0);
+  vec3 green = vec3(0.0,1.0,0.0);
+  vec3 blue = vec3(0.0/256.0,126.0/256.0,256.0/256.0);
+  
+  vec3 colorL;
+  vec3 colorM;
+  vec3 colorD;
+  vec3 colorS;
+  
+  texLeft.x -= (1.0/160.0);
+  texRight.x += (1.0/160.0);
+  
+  colour = texture2D(gm_BaseTexture, texCoord );
+  colourLeft = texture2D(gm_BaseTexture, texLeft );
+  colourRight = texture2D(gm_BaseTexture, texRight );
+    
+  colour.r = step(0.5,colour.r);
+  //colour.g = step(0.5,colour.g);
+  colour.b = step(0.5,colour.b);
+  colour.a = step(0.5,colour.a);
+  
+  
+
+  //
+  
+  colorL = white;//vec3(255.0/256.0,234.0/256.0,170.0/256.0);
+  colorM = red;//vec3(105.0/256.0,205.0/256.0,240.0/256.0);//vec3(185.0/256.0,147.0/256.0,124.0/256.0);
+  colorD = black;//vec3(4.0/256.0,30.0/256.0,55.0/256.0);
+  colorS = blue;
+  
+
+  
+  
+  float LwhiteOrNot = step(0.8,colourLeft.g);
+  float LblueOrNot = step(0.8,colourLeft.b)-LwhiteOrNot;
+  float RwhiteOrNot = step(0.8,colourRight.g);
+  float RblueOrNot = step(0.8,colourRight.b)-RwhiteOrNot;
+  
+  float whiteOrNot = step(0.8,colour.g);
+  float blueOrNot = step(0.8,colour.b)-whiteOrNot;
+  
+  LwhiteOrNot -= whiteOrNot;
+  RwhiteOrNot -= whiteOrNot;
+  
+  float redOrNot = step(0.5,colour.r - colour.g);
+  float blackOrNot = step(0.5,1.0 - colour.r - colour.g - colour.b);
+  
+  colour.rgb = mix(colour.rgb,colorD,step(0.5,blackOrNot));
+  
+  colour.rgb = mix(colour.rgb,red,step(0.5,LwhiteOrNot));
+  colour.rgb = mix(colour.rgb,red,step(0.5,RwhiteOrNot));
+  colour.rgb = mix(colour.rgb,colorS,step(0.5,LblueOrNot));
+  colour.rgb = mix(colour.rgb,colorS,step(0.5,RblueOrNot));
+  colour.rgb = mix(colour.rgb,colorM,step(0.5,redOrNot));
+  
+  
+  
+
+
+  gl_FragColor = colour;
+
+}

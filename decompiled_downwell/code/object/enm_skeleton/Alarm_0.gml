@@ -1,0 +1,1 @@
+edamaged = 0;

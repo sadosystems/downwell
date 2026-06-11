@@ -1,0 +1,14 @@
+ebDir = 45;
+ebSpeed = 1.5;
+ebDmg = 1;
+ebDist = 64;
+imageAngled = 1;
+wallBound = 1;
+disappearSp = 0.6;
+xsp = 0;
+ysp = -1;
+allSet = 0;
+xx = x;
+yy = y;
+active = 1;
+image_speed = 0;

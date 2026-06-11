@@ -1,0 +1,15 @@
+event_inherited();
+ehp = 35;
+active = 0;
+grounded = 0;
+xsp = 0.5;
+ysp = 0;
+ugrav = 0.15;
+jumpsp = -3;
+leapState = 0;
+xx = x;
+yy = y;
+money = 20;
+imgSp = 0.3;
+image_speed = imgSp;
+alarm[1] = 60;

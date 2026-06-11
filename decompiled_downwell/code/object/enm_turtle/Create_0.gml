@@ -1,0 +1,17 @@
+event_inherited();
+money = 4;
+normalSpr = 335;
+stunSpr = 336;
+deadSpr = 337;
+mask_index = sprite_index;
+bulletImmune = 1;
+image_index = irandom(image_number - 1);
+ehp = 50;
+movesp = random_range(0.5, 1);
+xsp = movesp * choose(1, -1);
+ysp = 0;
+emitTimer = 45;
+xx = x;
+yy = y;
+imgSp = 0.2;
+image_speed = imgSp;

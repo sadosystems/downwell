@@ -1,0 +1,15 @@
+allSet = 0;
+hitWallFx = 101;
+bdmg = 0;
+bSpeed = 0;
+bDir = 0;
+bBounce = 0;
+bConsistent = 0;
+bWave = 0;
+bRange = 0;
+bExplode = 0;
+hitMemCount = 0;
+hitMem[0] = -1;
+hitIgnore = 0;
+xsp = 0;
+ysp = 0;

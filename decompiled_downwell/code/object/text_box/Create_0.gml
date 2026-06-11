@@ -1,0 +1,11 @@
+textShow = 0;
+inputTextAt = 0;
+textAmtTimer = 1;
+alarm[0] = textAmtTimer;
+pageTotal = 0;
+pageCurrent = 0;
+nextPageOk = 0;
+textString = "you shouldn't\\be seeing this#???\\longer text\\yay yay yay\\hohoho";
+textLength = string_length(textString);
+drawText = "";
+returnToSender = -1;

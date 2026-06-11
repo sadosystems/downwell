@@ -1,0 +1,11 @@
+event_inherited();
+image_speed = 0.1;
+speaking = 0;
+xx = x;
+yy = y;
+speakTimer = 0;
+speakAt = 60;
+npcDialogue = "language select#(game restarts)";
+answer[0] = "English";
+answer[1] = "ニホンゴ";
+choice[0] = -1;

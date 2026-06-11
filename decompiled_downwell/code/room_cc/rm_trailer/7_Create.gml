@@ -1,0 +1,1 @@
+text = "AND COLLECTING#TREASURES";

@@ -1,0 +1,1 @@
+jumpShootLock = 0;

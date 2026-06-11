@@ -1,0 +1,13 @@
+event_inherited();
+bdmg = 50;
+bDir = 270;
+bConsistent = 1;
+bWave = 1;
+allSet = 1;
+damageEnd = 0;
+damageEndFrame = 3;
+scrSShake(6, 8);
+momentDelay();
+image_index = 0;
+image_speed = 0.5;
+image_xscale = choose(1, -1);

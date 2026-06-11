@@ -1,0 +1,11 @@
+event_inherited();
+bulPropertyCheck();
+image_speed = 0;
+disap = 0;
+allSet = 0;
+animation = 0;
+image_index = 0;
+xsp = 0;
+ysp = 0;
+stuck = 0;
+bSpeed += random_range(-global.pBulSpecial[0], 0);

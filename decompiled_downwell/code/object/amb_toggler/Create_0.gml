@@ -1,0 +1,12 @@
+event_inherited();
+image_speed = 0.1;
+imgSp = 0.1;
+speaking = 0;
+xx = x;
+yy = y;
+speakTimer = 0;
+speakAt = 60;
+npcDialogue = "TEXT\\TEXT TEXT?\\TEXT TEXT TEXT!\\YES it's working";
+textOver = 0;
+checkThis = 0;
+speakDelay = 0;

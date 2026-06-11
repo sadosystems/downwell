@@ -1,0 +1,13 @@
+event_inherited();
+normalSpr = 292;
+stunSpr = 293;
+deadSpr = 294;
+image_angle = choose(90, 270);
+ehp = 100;
+xsp = 0;
+ysp = 0;
+xx = x;
+yy = y;
+money = 6;
+imgSp = 0.225;
+image_speed = imgSp;

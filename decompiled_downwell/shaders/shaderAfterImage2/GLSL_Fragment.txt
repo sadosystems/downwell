@@ -1,0 +1,66 @@
+#version 120
+#define LOWPREC 
+#define lowp
+#define mediump
+#define highp
+#define precision
+// Uniforms look like they're shared between vertex and fragment shaders in GLSL, so we have to be careful to avoid name clashes
+
+uniform sampler2D gm_BaseTexture;
+
+uniform bool gm_PS_FogEnabled;
+uniform vec4 gm_FogColour;
+uniform bool gm_AlphaTestEnabled;
+uniform float gm_AlphaRefValue;
+
+void DoAlphaTest(vec4 SrcColour)
+{
+	if (gm_AlphaTestEnabled)
+	{
+		if (SrcColour.a <= gm_AlphaRefValue)
+		{
+			discard;
+		}
+	}
+}
+
+void DoFog(inout vec4 SrcColour, float fogval)
+{
+	if (gm_PS_FogEnabled)
+	{
+		SrcColour = mix(SrcColour, gm_FogColour, clamp(fogval, 0.0, 1.0)); 
+	}
+}
+
+#define _YY_GLSL_ 1
+varying vec2 v_vTexcoord;
+varying vec4 v_vColour;
+varying vec3 v_vPosition;
+
+
+
+
+void main()
+{
+
+    vec2 texCoord = v_vTexcoord;
+    vec4 red = vec4(1.0,0.0,0.0,1.0);
+    vec4 blue = vec4(0.0/256.0,126.0/256.0,256.0/256.0,1.0);
+    vec4 transparent = vec4(0.0,0.0,0.0,0.0);
+    vec4 colour;
+    colour = texture2D(gm_BaseTexture, texCoord );
+    
+    
+    
+    colour = mix(transparent,red,step(0.7,colour.g));
+
+    colour = mix(transparent,colour,step(0.5,floor(mod(v_vPosition.x,2.0))));
+    colour = mix(transparent,colour,step(0.5,floor(mod(v_vPosition.y,2.0))));
+    //colour = mix(transparent,colour,step(0.5,mod(floor(texCoord.x*10250.5),3.0)));
+  
+  
+
+
+    gl_FragColor = colour;
+
+}
