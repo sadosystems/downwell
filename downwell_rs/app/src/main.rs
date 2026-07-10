@@ -42,7 +42,25 @@ struct Gpu {
     insts: Vec<Inst>,
 }
 
+// elapsed monotonic microseconds — libTAS virtualizes this clock, so under
+// geist both binaries read the harness-controlled value (GM's randomize source)
+fn elapsed_us() -> u64 {
+    let mut ts = std::mem::MaybeUninit::<libc::timespec>::uninit();
+    unsafe {
+        libc::clock_gettime(libc::CLOCK_MONOTONIC, ts.as_mut_ptr());
+        let ts = ts.assume_init();
+        ts.tv_sec as u64 * 1_000_000 + ts.tv_nsec as u64 / 1_000
+    }
+}
+
 fn main() {
+    // read the randomize() clock FIRST — before SDL/wgpu init can advance
+    // libTAS's virtual time — and stash it for boot()
+    let boot_us = elapsed_us();
+    if std::env::var("DOWNWELL_SEED_LOG").is_ok() {
+        let lo = boot_us as u32;
+        eprintln!("[seed] elapsed_us={} seed={:#010x}", boot_us, lo.rotate_left(16) ^ lo.wrapping_add((boot_us >> 32) as u32));
+    }
     // single-threaded software rasterization: llvmpipe/lavapipe worker threads
     // confuse libTAS's frame gating (irregular input staging). Must be set
     // before the driver initializes.
@@ -64,8 +82,8 @@ fn main() {
     }
     let mut gpu = pollster::block_on(Gpu::new());
     match out {
-        Some(path) => headless(&mut gpu, frames, &path, driven),
-        None => windowed(&mut gpu),
+        Some(path) => headless(&mut gpu, frames, &path, driven, boot_us),
+        None => windowed(&mut gpu, boot_us),
     }
 }
 
@@ -89,10 +107,10 @@ fn tape(f: u32, enabled: bool) -> sim::Input {
     }
 }
 
-fn headless(gpu: &mut Gpu, frames: u32, out_path: &str, driven: bool) {
+fn headless(gpu: &mut Gpu, frames: u32, out_path: &str, driven: bool, boot_us: u64) {
     let sim_log = std::env::var("DOWNWELL_SIM_LOG").is_ok();
     let mut gs = sim::GameState::new();
-    gs.boot();
+    gs.boot(boot_us);
     let mut dl = Box::new(sim::DrawList::EMPTY);
     let mut rgb = vec![0u8; (WIN_W * WIN_H * 3) as usize];
     let mut file = std::io::BufWriter::new(std::fs::File::create(out_path).unwrap());
@@ -117,7 +135,7 @@ fn headless(gpu: &mut Gpu, frames: u32, out_path: &str, driven: bool) {
     eprintln!("[downwell_rs] wrote {frames} frames to {out_path}");
 }
 
-fn windowed(gpu: &mut Gpu) {
+fn windowed(gpu: &mut Gpu, boot_us: u64) {
     // Standalone runs pace themselves to 60 FPS; under libTAS the harness
     // gates every present (and virtualizes the clock), so pacing is skipped.
     let under_libtas = std::env::var("LD_PRELOAD")
@@ -156,7 +174,7 @@ fn windowed(gpu: &mut Gpu) {
     let tape_mode = std::env::var("DOWNWELL_TAPE").is_ok();
     let mut tick_no: u64 = 0;
     let mut gs = sim::GameState::new();
-    gs.boot();
+    gs.boot(boot_us);
     let mut dl = Box::new(sim::DrawList::EMPTY);
     let mut rgb = vec![0u8; (WIN_W * WIN_H * 3) as usize];
     // track held keys from SDL key events (libTAS delivers these on the same

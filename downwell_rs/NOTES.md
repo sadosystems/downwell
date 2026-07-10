@@ -363,3 +363,14 @@ Walk tape now 6/1099, first 992 (the burst moment itself) — remaining residual
 investigation via user eyeballs. NOTE: one flaky geist run showed first=10 (boot-frame
 capture misalignment, ±1 libTAS nondeterminism) — RERUN before believing any regression
 that starts in an era the change cannot touch.
+
+## Seed generalization VERIFIED (same lua, different seed)
+GM randomize() seed law: seed = rotl32(us,16) ^ (us_lo + us_hi), us = CLOCK_MONOTONIC
+microseconds (libTAS --elapsed-time-sec; NOT wall time — systime change leaves seed 0).
+Verified: elapsed 0 -> 0, elapsed 7 -> 0xcfaacfaa (gdb @0xb47024 + formula + Rust derivation).
+CRITICAL: read the clock at the TOP of main() — after SDL/wgpu init libTAS has advanced
+virtual time and the seed is wrong (334-diff scene mismatch; early read -> exact match).
+geist: GEIST_ELAPSED_SEC env sets --elapsed-time-sec for both builds.
+Walk tape at seed 0xcfaacfaa: 6/1099 first 996 — same burst-only residual as seed 0.
+The 6-frame sparkle-burst residual is SEED-INDEPENDENT -> structural (burst draw order /
+pool permutation or 1px raster nuance), not RNG.

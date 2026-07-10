@@ -75,7 +75,7 @@ fn web() -> &'static mut Web {
 pub extern "C" fn boot(classic: u32) {
     let w = web();
     w.gs = sim::GameState::new();
-    w.gs.boot();
+    w.gs.boot(0); // frozen-clock default seed (matches geist elapsed=0)
     w.gs.show_splash = 0; // skip the intro credits (sim's own no-splash path)
     w.classic = classic != 0;
 }
@@ -169,13 +169,20 @@ fn rasterize_cinema(gs: &sim::GameState, dl: &sim::DrawList, fb: &mut [u8]) {
         // the stars along with the camera. In the movie frame the backdrop is
         // world-locked at its camera-at-rest position — (146,407), the sim's
         // boot values; 119/104 is the draw origin from menu.rs — so it can't
-        // slide against the rest of the scene. (+10,+20): framing nudge for
+        // slide against the rest of the scene. (+10,+86): framing nudge for
         // the movie crop.
         if c.sprite == 369 {
             let mut fixed = *c;
             fixed.x = (146 + 10 - 119 - vx) as f32;
-            fixed.y = (407 + 20 - 104 - vy) as f32;
+            fixed.y = (407 + 86 - 104 - vy) as f32;
             draw_cmd(&fixed, fb, &v);
+            continue;
+        }
+        // no DOWNWELL wordmark in the movie frame: skip the title fade
+        // (654) and its sparkles (655/656). The sim still runs the whole
+        // title state machine — its RNG consumption is part of the
+        // frame-accuracy contract — we just don't draw it.
+        if matches!(c.sprite, 654..=656) {
             continue;
         }
         // the surface clear rect (already covered by our own clear)

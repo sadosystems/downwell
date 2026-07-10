@@ -183,9 +183,15 @@ impl GameState {
             raw_prev: Input { space: false, left: false, right: false },
         }
     }
-    // boot: scrInitialize -> randomize(); libTAS frozen clock seeds 0
-    pub fn boot(&mut self) {
-        self.rng.seed(0);
+    // boot: scrInitialize -> randomize(). GM's randomize seeds from elapsed
+    // MONOTONIC microseconds: seed = rotl32(us, 16) ^ (us_lo + us_hi)
+    // (verified against the runner at elapsed 0 -> 0 and 7s -> 0xcfaacfaa).
+    // The platform layer reads the (libTAS-virtualized) clock and passes it in.
+    pub fn boot(&mut self, elapsed_us: u64) {
+        let lo = elapsed_us as u32;
+        let hi = (elapsed_us >> 32) as u32;
+        let seed = lo.rotate_left(16) ^ lo.wrapping_add(hi);
+        self.rng.seed(seed);
     }
 }
 
