@@ -15,6 +15,8 @@ const WEB_MENU_BOUNDS: [i32; 2] = [(416 - CIN_W) / 2, (416 - CIN_W) / 2 + CIN_W]
 const FLOOR_Y: f64 = 512.0;
 const ORIGINAL_FLOOR_LEFT: i32 = -40;
 const ORIGINAL_FLOOR_RIGHT: i32 = 455;
+const EXTENDED_FLOOR_LEFT: i32 = ORIGINAL_FLOOR_LEFT - 1;
+const EXTENDED_FLOOR_RIGHT: i32 = ORIGINAL_FLOOR_RIGHT + 1;
 
 fn configure_web_player(gs: &mut sim::GameState) {
     gs.pl.menu_bounds = WEB_MENU_BOUNDS;
@@ -31,11 +33,12 @@ fn configure_web_player(gs: &mut sim::GameState) {
 
 fn resolve_extended_floor(gs: &mut sim::GameState, previous_y: f64) {
     let p = &mut gs.pl;
-    // The original collision tiles cover x=-40..455. Outside that interval,
-    // give the visual floor extension the same top edge (mask bottom 519
-    // against tile top 520) while the player is crossing it downward.
-    let outside_original = p.x + 3 < ORIGINAL_FLOOR_LEFT || p.x - 4 > ORIGINAL_FLOOR_RIGHT;
-    if outside_original
+    // The original collision tiles cover x=-40..455. The web room extends the
+    // floor one tile past each edge, so catch the player as soon as their hit
+    // box touches that added span instead of waiting for the whole body to
+    // clear the original floor.
+    let on_extended_floor = p.x + 3 >= EXTENDED_FLOOR_RIGHT || p.x - 4 <= EXTENDED_FLOOR_LEFT;
+    if on_extended_floor
         && p.x >= WEB_MENU_BOUNDS[0]
         && p.x < WEB_MENU_BOUNDS[1]
         && p.ysp >= 0.0
@@ -109,7 +112,7 @@ mod tests {
     fn extended_floor_catches_a_falling_player() {
         let mut gs = sim::GameState::new();
         gs.pl.exists = true;
-        gs.pl.x = 470;
+        gs.pl.x = 456;
         gs.pl.yy = 513.0;
         gs.pl.y = 513;
         gs.pl.ysp = 1.0;
