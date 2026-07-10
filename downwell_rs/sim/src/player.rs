@@ -155,6 +155,7 @@ pub struct Fx {
     // GM: instances created during the normal-Step dispatch skip their own
     // Step that frame (sparkles); begin-step spawns (casings) do not.
     pub fresh: bool,
+    pub seq: u32, // spawn order — GM draws same-depth instances oldest-first
 }
 
 impl Fx {
@@ -175,6 +176,7 @@ impl Fx {
             flashing: false,
             d_flash: 1,
             fresh: false,
+            seq: 0,
         }
     }
 }
@@ -444,9 +446,12 @@ pub struct StepCtx<'a> {
     pub no_control: bool,
     pub meter_jiggle: &'a mut f64, // objControlerN HUD jiggle (scrRecharge)
     pub cam: &'a mut Camera,
+    pub fx_seq: &'a mut u32,
 }
 
-fn fx_spawn(fx: &mut [Fx; FX_MAX], f: Fx) {
+fn fx_spawn_seq(fx: &mut [Fx; FX_MAX], seq: &mut u32, mut f: Fx) {
+    *seq += 1;
+    f.seq = *seq;
     for slot in fx.iter_mut() {
         if !slot.alive {
             *slot = f;
@@ -501,7 +506,7 @@ impl Player {
             // !death
             if c.inp.d_left {
                 if self.xsp >= 0.0 && self.grounded && !c.inp.d_right && !self.wall_colliding {
-                    fx_spawn(c.fx, Fx {
+                    fx_spawn_seq(c.fx, c.fx_seq, Fx {
                         kind: 0,
                         x: self.xx,
                         y: self.yy,
@@ -535,7 +540,7 @@ impl Player {
             }
             if c.inp.d_right {
                 if self.xsp <= 0.0 && self.grounded && !c.inp.d_left && !self.wall_colliding {
-                    fx_spawn(c.fx, Fx {
+                    fx_spawn_seq(c.fx, c.fx_seq, Fx {
                         kind: 0,
                         x: self.xx,
                         y: self.yy,
@@ -614,7 +619,7 @@ impl Player {
             if self.airstatus {
                 self.airstatus = false;
                 // groundRoom -> no levelBeginCue
-                fx_spawn(c.fx, Fx {
+                fx_spawn_seq(c.fx, c.fx_seq, Fx {
                     kind: 0,
                     x: self.xx,
                     y: self.yy,
@@ -630,7 +635,7 @@ impl Player {
                         // scrRecharge (inside scrFjump)
                         if self.stammo < 8 {
                             self.stammo = 8;
-                            fx_spawn(c.fx, Fx {
+                            fx_spawn_seq(c.fx, c.fx_seq, Fx {
                                 kind: 4,
                                 x: self.plx,
                                 y: self.ply,
@@ -717,7 +722,7 @@ impl Player {
             } else if self.spin_jumping != 0.0 {
                 if c.inp.d_left {
                     if meet_wall(self.x as f64 + WALL_KICK_LENGTH, self.y as f64) {
-                        fx_spawn(c.fx, Fx {
+                        fx_spawn_seq(c.fx, c.fx_seq, Fx {
                             kind: 1,
                             x: self.x as f64,
                             y: self.y as f64,
@@ -739,7 +744,7 @@ impl Player {
                 } else if c.inp.d_right
                     && meet_wall(self.x as f64 - WALL_KICK_LENGTH, self.y as f64)
                 {
-                    fx_spawn(c.fx, Fx {
+                    fx_spawn_seq(c.fx, c.fx_seq, Fx {
                         kind: 1,
                         x: self.x as f64,
                         y: self.y as f64,
@@ -798,7 +803,7 @@ impl Player {
         self.ysp = -JUMPSP;
         self.jumped = true;
         c.rng.well(); // soundPlay(choose(86)) — 1 draw
-        fx_spawn(c.fx, Fx {
+        fx_spawn_seq(c.fx, c.fx_seq, Fx {
             kind: 1,
             x: self.x as f64,
             y: self.y as f64,
@@ -829,7 +834,7 @@ impl Player {
             // scrPlayerEmitBullet: muzzle fx + bullet instance
             let emitx = muzzlex + self.shoot_leg;
             self.shoot_leg *= -1.0;
-            fx_spawn(c.fx, Fx {
+            fx_spawn_seq(c.fx, c.fx_seq, Fx {
                 kind: 3, // muzzle fx sprite 603
                 x: emitx,
                 y: self.y as f64 + 12.0,
@@ -845,7 +850,7 @@ impl Player {
             let cx = c.rng.random_range(-3.0, -1.0) * sign_f(self.image_xscale);
             let cy = c.rng.random_range(-3.0, 0.0);
             let cs = [-0.5f32, -0.3, 0.0, 0.3, 0.5][c.rng.choose_index(5) as usize];
-            fx_spawn(c.fx, Fx {
+            fx_spawn_seq(c.fx, c.fx_seq, Fx {
                 kind: 2,
                 x: self.x as f64,
                 y: self.y as f64,
@@ -940,7 +945,7 @@ impl Player {
                 // scrRecharge: stammo restore + fx + HUD jiggle + shake(1,2)
                 if self.stammo < 8 {
                     self.stammo = 8;
-                    fx_spawn(c.fx, Fx {
+                    fx_spawn_seq(c.fx, c.fx_seq, Fx {
                         kind: 4, // effect sprite 111, speed 1, scale .75
                         x: self.plx,
                         y: self.ply,
@@ -1049,7 +1054,7 @@ impl Player {
                 self.napping = false;
                 if self.grounded {
                     self.sound_land(c);
-                    fx_spawn(c.fx, Fx {
+                    fx_spawn_seq(c.fx, c.fx_seq, Fx {
                         kind: 0,
                         x: self.xx,
                         y: self.yy,
@@ -1236,7 +1241,7 @@ fn spawn_bullet(c: &mut StepCtx, x: f64, y: f64, dir: f64) {
 }
 
 // bullet Step_0 + Step_2 (despawn out of view) + alarm
-pub fn bullet_step(b: &mut Bullet, rng: &mut GmRng, fx: &mut [Fx; FX_MAX], view_y: i32) {
+pub fn bullet_step(b: &mut Bullet, rng: &mut GmRng, fx: &mut [Fx; FX_MAX], fx_seq: &mut u32, view_y: i32) {
     if !b.alive {
         return;
     }
@@ -1279,19 +1284,14 @@ pub fn bullet_step(b: &mut Bullet, rng: &mut GmRng, fx: &mut [Fx; FX_MAX], view_
     if hit {
         // scrEffectSpawn(x, y, hitWallFx=101, 0.5, 0, 0): depth 0 — drawn in
         // front of the bench (1000), behind the player (-50000)
-        for slot in fx.iter_mut() {
-            if !slot.alive {
-                *slot = Fx {
-                    alive: true,
-                    kind: 5,
-                    x: b.x,
-                    y: b.y,
-                    image_speed: 0.5,
-                    ..Fx::zeroed()
-                };
-                break;
-            }
-        }
+        fx_spawn_seq(fx, fx_seq, Fx {
+            alive: true,
+            kind: 5,
+            x: b.x,
+            y: b.y,
+            image_speed: 0.5,
+            ..Fx::zeroed()
+        });
         b.alive = false;
         return;
     }

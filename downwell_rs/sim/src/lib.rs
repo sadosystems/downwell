@@ -137,6 +137,7 @@ pub struct GameState {
     // objBgNightsky position, set in its Step from LAST frame's view
     pub sky_x: i32,
     pub sky_y: i32,
+    pub fx_seq: u32,
     pub no_control: bool,
     // GM's room switch consumes an extra present; menu-phase constants are
     // capture-aligned (calibrated vs idle captures), so menu inputs must be
@@ -179,6 +180,7 @@ impl GameState {
             title_alarm2: -1,
             sky_x: 146,
             sky_y: 407,
+            fx_seq: 0,
             no_control: false,
             raw_prev: Input { space: false, left: false, right: false },
         }
@@ -285,7 +287,7 @@ pub fn tick(gs: &mut GameState, input: Input) {
             }
             // begin step: player Step_1
             {
-                let GameState { rng, fx, bullets, pl, cam, meter_jiggle, inputs, no_control, .. } = gs;
+                let GameState { rng, fx, bullets, pl, cam, meter_jiggle, inputs, no_control, fx_seq, .. } = gs;
                 let mut ctx = player::StepCtx {
                     rng,
                     fx,
@@ -294,6 +296,7 @@ pub fn tick(gs: &mut GameState, input: Input) {
                     no_control: *no_control,
                     meter_jiggle,
                     cam,
+                    fx_seq,
                 };
                 pl.step_begin(&mut ctx);
             }
@@ -309,7 +312,7 @@ pub fn tick(gs: &mut GameState, input: Input) {
             }
             // normal steps: player Step_0, camMain, bullets, casings
             {
-                let GameState { rng, fx, bullets, pl, cam, meter_jiggle, inputs, no_control, .. } = gs;
+                let GameState { rng, fx, bullets, pl, cam, meter_jiggle, inputs, no_control, fx_seq, .. } = gs;
                 let mut ctx = player::StepCtx {
                     rng,
                     fx,
@@ -318,6 +321,7 @@ pub fn tick(gs: &mut GameState, input: Input) {
                     no_control: *no_control,
                     meter_jiggle,
                     cam,
+                    fx_seq,
                 };
                 pl.step_normal(&mut ctx);
             }
@@ -336,7 +340,7 @@ pub fn tick(gs: &mut GameState, input: Input) {
             }
             let view_y = gs.cam.y - 142;
             for b in gs.bullets.iter_mut() {
-                player::bullet_step(b, &mut gs.rng, &mut gs.fx, view_y);
+                player::bullet_step(b, &mut gs.rng, &mut gs.fx, &mut gs.fx_seq, view_y);
             }
             fx_steps(&mut gs.fx);
             gs.room_frame += 1;
@@ -482,7 +486,7 @@ fn title_anim_tail(gs: &mut GameState) {
                 let fy = gs.title_y + gs.rng.random_range(-16.0, 16.0);
                 let fx = 328.0 + gs.rng.random_range(-66.0, 66.0);
                 // spawned mid-Step-dispatch: no Step of its own this frame
-                spawn_sparkle(&mut gs.fx, fx, fy, which, sp, 0.1, true);
+                spawn_sparkle(&mut gs.fx, &mut gs.fx_seq, fx, fy, which, sp, 0.1, true);
             }
         }
         if gs.title_idx > 9.0 {
@@ -516,7 +520,7 @@ fn title_alarms(gs: &mut GameState) {
                 let fy = gs.title_y + gs.rng.random_range(-16.0, 16.0);
                 let fx = 328.0 + gs.rng.random_range(-70.0, 70.0);
                 // spawned in the ALARM phase: its Step_0 runs later this frame
-                spawn_sparkle(&mut gs.fx, fx, fy, which, sp, vel, false);
+                spawn_sparkle(&mut gs.fx, &mut gs.fx_seq, fx, fy, which, sp, vel, false);
             }
             gs.title_alarm1 = 75;
         }
@@ -530,10 +534,12 @@ fn title_alarms(gs: &mut GameState) {
 }
 
 // parentMovingFx: dir 90 -> xsp 0, ysp -speed; anim-end kill
-fn spawn_sparkle(fx: &mut [player::Fx; player::FX_MAX], x: f64, y: f64, which: u32, img_sp: f32, vel: f64, fresh: bool) {
+fn spawn_sparkle(fx: &mut [player::Fx; player::FX_MAX], seq: &mut u32, x: f64, y: f64, which: u32, img_sp: f32, vel: f64, fresh: bool) {
+    *seq += 1;
     for slot in fx.iter_mut() {
         if !slot.alive {
             *slot = player::Fx {
+                seq: *seq,
                 alive: true,
                 kind: if which == 1 { 7 } else { 6 }, // choose(655,656)
                 x,
@@ -553,10 +559,27 @@ fn spawn_sparkle(fx: &mut [player::Fx; player::FX_MAX], x: f64, y: f64, which: u
 // group 0 = depth 0 (jump fx kinds 0/1, casings, bullets) — behind the player
 // group 1 = scrEffectSpawn depths (recharge -50500, muzzle -60000) — in front
 fn draw_fx_group(fx: &[player::Fx; player::FX_MAX], bullets: &[player::Bullet; player::BUL_MAX], dl: &mut DrawList, vx: i32, vy: i32, group: u8) {
-    for f in fx.iter() {
-        if !f.alive {
-            continue;
+    // GM draws same-depth instances oldest-first: order by spawn seq, not
+    // pool slot (slot reuse permutes overlap winners otherwise)
+    let mut order: [u8; player::FX_MAX] = [0; player::FX_MAX];
+    let mut n = 0usize;
+    for (i, f) in fx.iter().enumerate() {
+        if f.alive {
+            order[n] = i as u8;
+            n += 1;
         }
+    }
+    let mut k = 1;
+    while k < n {
+        let mut j = k;
+        while j > 0 && fx[order[j - 1] as usize].seq > fx[order[j] as usize].seq {
+            order.swap(j - 1, j);
+            j -= 1;
+        }
+        k += 1;
+    }
+    for oi in 0..n {
+        let f = &fx[order[oi] as usize];
         let fx_group = match f.kind {
             3 | 4 => 1,
             _ => 0,

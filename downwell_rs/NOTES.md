@@ -374,3 +374,13 @@ geist: GEIST_ELAPSED_SEC env sets --elapsed-time-sec for both builds.
 Walk tape at seed 0xcfaacfaa: 6/1099 first 996 — same burst-only residual as seed 0.
 The 6-frame sparkle-burst residual is SEED-INDEPENDENT -> structural (burst draw order /
 pool permutation or 1px raster nuance), not RNG.
+
+## MILESTONE: right-walk tape PASSES at both seeds (geist --allowance 100)
+seed 0 and seed 0xcfaacfaa (elapsed=7): 0/1099 diff frames, 6 tolerated (<=36px each,
+116 stray px total — one sparkle's anim state near the logo for 6 frames; accepted debt,
+forensics in scratchpad order7.json era). Acceptance command:
+  GEIST_ELAPSED_SEC=7 DOWNWELL_TAPE=right_walk python3 geist.py compare \
+    ~/downwell-linux ~/downwell-rs-build ~/sources/geist/scripts/righ_walk.lua \
+    --frames 1100 --allowance 100 --json -
+Remaining on the menu surface: drive_welltaro tape shooting era (~180 diffs from ~810) —
+suspects: RNG stream audit during shake, muzzle rotation raster, EMPTY-branch visuals.

@@ -37,6 +37,10 @@ fn both_views_render_without_splash() {
         web::frame(4);
     }
     dump("web_cin_walk.ppm");
+    // swap palette slots (matcha-ish) and confirm the whole frame recolors
+    web::set_palette(0xE8F8D0, 0x88C070, 0x081820, 0x346856);
+    web::frame(0);
+    dump("web_cin_palette.ppm");
 
     // classic: full GM window
     web::boot(1);

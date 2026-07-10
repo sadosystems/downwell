@@ -50,11 +50,21 @@ struct View {
     clip: (f32, f32),  // pal=2 x clip, window px
 }
 
+// palette slots, GM shader order: light, mid, dark, special. DOWNWELL values;
+// set_palette() swaps them (the downwiki footer follows the wiki's palette).
+const DW_PAL: [[f32; 3]; 4] = [
+    [250.0 / 256.0, 250.0 / 256.0, 250.0 / 256.0],
+    [250.0 / 256.0, 0.0, 0.0],
+    [5.0 / 256.0, 5.0 / 256.0, 5.0 / 256.0],
+    [0.0, 126.0 / 256.0, 250.0 / 256.0],
+];
+
 struct Web {
     gs: sim::GameState,
     dl: sim::DrawList,
     fb: [u8; FB_LEN],
     classic: bool,
+    pal: [[f32; 3]; 4],
 }
 
 // const-initialized: lives in zeroed wasm memory, no startup construction on
@@ -64,6 +74,7 @@ static mut WEB: Web = Web {
     dl: sim::DrawList::EMPTY,
     fb: [0; FB_LEN],
     classic: false,
+    pal: DW_PAL,
 };
 
 fn web() -> &'static mut Web {
@@ -78,6 +89,21 @@ pub extern "C" fn boot(classic: u32) {
     w.gs.boot(0); // frozen-clock default seed (matches geist elapsed=0)
     w.gs.show_splash = 0; // skip the intro credits (sim's own no-splash path)
     w.classic = classic != 0;
+    w.pal = DW_PAL;
+}
+
+// swap the four palette slots (0xRRGGBB each), GM order: light, mid, dark,
+// special. The downwiki embed maps its --dw-ink/mid/bg/special onto these.
+#[no_mangle]
+pub extern "C" fn set_palette(l: u32, m: u32, d: u32, s: u32) {
+    fn unpack(v: u32) -> [f32; 3] {
+        [
+            ((v >> 16) & 0xFF) as f32 / 255.0,
+            ((v >> 8) & 0xFF) as f32 / 255.0,
+            (v & 0xFF) as f32 / 255.0,
+        ]
+    }
+    web().pal = [unpack(l), unpack(m), unpack(d), unpack(s)];
 }
 
 // input bits: 1 = space, 2 = left, 4 = right
@@ -92,9 +118,9 @@ pub extern "C" fn frame(input: u32) {
     sim::tick(&mut w.gs, inp);
     sim::draw(&mut w.gs, &mut w.dl); // mutates state like GM's draw event: once per tick
     if w.classic {
-        rasterize_classic(&w.dl, &mut w.fb);
+        rasterize_classic(&w.dl, &mut w.fb, &w.pal);
     } else {
-        rasterize_cinema(&w.gs, &w.dl, &mut w.fb);
+        rasterize_cinema(&w.gs, &w.dl, &mut w.fb, &w.pal);
     }
 }
 
@@ -115,11 +141,11 @@ pub extern "C" fn fb_h() -> u32 {
 
 // ---- view assembly ---------------------------------------------------------
 
-fn clear(fb: &mut [u8], n: usize) {
-    fb[..n * 4].chunks_exact_mut(4).for_each(|p| p.copy_from_slice(&[0, 0, 0, 255]));
+fn clear(fb: &mut [u8], n: usize, c: [u8; 3]) {
+    fb[..n * 4].chunks_exact_mut(4).for_each(|p| p.copy_from_slice(&[c[0], c[1], c[2], 255]));
 }
 
-fn rasterize_classic(dl: &sim::DrawList, fb: &mut [u8]) {
+fn rasterize_classic(dl: &sim::DrawList, fb: &mut [u8], pal: &[[f32; 3]; 4]) {
     let v = View {
         w: CLASSIC_W,
         h: CLASSIC_H,
@@ -128,16 +154,18 @@ fn rasterize_classic(dl: &sim::DrawList, fb: &mut [u8]) {
         dy: 0.0,
         clip: (220.0, 540.0),
     };
-    clear(fb, v.w * v.h);
+    // GM clears the window black regardless of palette (only the surface
+    // rect runs through the shader)
+    clear(fb, v.w * v.h, [0, 0, 0]);
     for c in &dl.cmds[..dl.n] {
-        draw_cmd(c, fb, &v);
+        draw_cmd(c, fb, &v, pal);
     }
 }
 
 // Movie crop: world draws only (pal=2), camera re-centered for the wider
 // window. sim's draws are relative to its 160x284 view origin (vx, vy);
 // shifting them by (vx - vx_cin, vy - vy_cin) re-anchors them to ours.
-fn rasterize_cinema(gs: &sim::GameState, dl: &sim::DrawList, fb: &mut [u8]) {
+fn rasterize_cinema(gs: &sim::GameState, dl: &sim::DrawList, fb: &mut [u8], pal: &[[f32; 3]; 4]) {
     // sim's view origin (sim/src/lib.rs app_surface), recomputed identically
     let vx = (gs.cam.x - 80).clamp(0, 416 - 160);
     let vy = (gs.cam.y - 142).clamp(0, 1200 - 284);
@@ -152,7 +180,10 @@ fn rasterize_cinema(gs: &sim::GameState, dl: &sim::DrawList, fb: &mut [u8]) {
         dy: (vy - vyc) as f32,
         clip: (0.0, CIN_W as f32 * SCALE),
     };
-    clear(fb, v.w * v.h);
+    // frame background = the palette's dark slot (the whole movie frame is
+    // "inside the shader", unlike classic's black window margins)
+    let d = pal[2];
+    clear(fb, v.w * v.h, [to_u8(d[0]), to_u8(d[1]), to_u8(d[2])]);
     // the rmMenu dissolve tiles the 160x284 surface; retile it over the whole
     // movie window at the same dither frame (view-anchored, not world)
     let mut dissolve: Option<u16> = None;
@@ -175,7 +206,7 @@ fn rasterize_cinema(gs: &sim::GameState, dl: &sim::DrawList, fb: &mut [u8]) {
             let mut fixed = *c;
             fixed.x = (146 + 10 - 119 - vx) as f32;
             fixed.y = (407 + 86 - 104 - vy) as f32;
-            draw_cmd(&fixed, fb, &v);
+            draw_cmd(&fixed, fb, &v, pal);
             continue;
         }
         // no DOWNWELL wordmark in the movie frame: skip the title fade
@@ -195,7 +226,7 @@ fn rasterize_cinema(gs: &sim::GameState, dl: &sim::DrawList, fb: &mut [u8]) {
         {
             continue;
         }
-        draw_cmd(c, fb, &v);
+        draw_cmd(c, fb, &v, pal);
     }
     if let Some(frame) = dissolve {
         let anchored = View { dx: 0.0, dy: 0.0, ..v };
@@ -214,7 +245,7 @@ fn rasterize_cinema(gs: &sim::GameState, dl: &sim::DrawList, fb: &mut [u8]) {
                     pal: 2,
                     rot: 0.0,
                 };
-                draw_cmd(&tile, fb, &anchored);
+                draw_cmd(&tile, fb, &anchored, pal);
                 x += 8;
             }
             y += 8;
@@ -224,7 +255,7 @@ fn rasterize_cinema(gs: &sim::GameState, dl: &sim::DrawList, fb: &mut [u8]) {
 
 // ---- software rasterizer: mirrors app/src/shader.wgsl ---------------------
 
-fn draw_cmd(c: &sim::DrawCmd, fb: &mut [u8], v: &View) {
+fn draw_cmd(c: &sim::DrawCmd, fb: &mut [u8], v: &View, pal: &[[f32; 3]; 4]) {
     let (rx, ry, rw, rh) = atlas_gen::sprite_rect(c.sprite, c.frame);
     if rw == 0 || rh == 0 {
         return;
@@ -316,7 +347,7 @@ fn draw_cmd(c: &sim::DrawCmd, fb: &mut [u8], v: &View) {
                 col[i] *= tint[i];
             }
             if c.pal >= 1 {
-                palette(&mut col);
+                palette(&mut col, pal);
             }
             if col[3] <= 0.0 {
                 continue;
@@ -330,25 +361,27 @@ fn step(edge: f32, v: f32) -> f32 {
     if v >= edge { 1.0 } else { 0.0 }
 }
 
-// GM shader 0 (shaderTemplate, "DOWNWELL"): threshold r/b/a, classify by
-// channel, remap to the 4-color palette. Same math as shader.wgsl fs_main.
-fn palette(c: &mut [f32; 4]) {
+fn to_u8(v: f32) -> u8 {
+    (v * 255.0 + 0.5) as u8
+}
+
+// GM shader 0 (shaderTemplate): threshold r/b/a, classify by channel, remap
+// to the 4-color palette (same math as shader.wgsl fs_main; the slot colors
+// come from `pal` — DOWNWELL by default, the wiki's live palette on downwiki).
+fn palette(c: &mut [f32; 4], pal: &[[f32; 3]; 4]) {
     c[0] = step(0.5, c[0]);
     c[2] = step(0.5, c[2]);
     c[3] = step(0.5, c[3]);
-    const L: [f32; 3] = [250.0 / 256.0, 250.0 / 256.0, 250.0 / 256.0];
-    const M: [f32; 3] = [250.0 / 256.0, 0.0, 0.0];
-    const D: [f32; 3] = [5.0 / 256.0, 5.0 / 256.0, 5.0 / 256.0];
-    const S: [f32; 3] = [0.0, 126.0 / 256.0, 250.0 / 256.0];
+    let [l, m, d, s] = pal;
     let white = step(0.8, c[1]);
     let blue = step(0.8, c[2]) - white;
     let red = step(0.5, c[0] - c[1]);
     let black = step(0.5, 1.0 - c[0] - c[1] - c[2]);
-    for (sel, pal) in [(black, D), (red, M), (blue, S), (white, L)] {
+    for (sel, slot) in [(black, d), (red, m), (blue, s), (white, l)] {
         if step(0.5, sel) == 1.0 {
-            c[0] = pal[0];
-            c[1] = pal[1];
-            c[2] = pal[2];
+            c[0] = slot[0];
+            c[1] = slot[1];
+            c[2] = slot[2];
         }
     }
 }
