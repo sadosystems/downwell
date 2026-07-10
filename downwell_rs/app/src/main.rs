@@ -89,6 +89,22 @@ fn main() {
 
 // drive_welltaro.lua tape: SPACE 4-on/36-off before f 780, 3-on/15-off after;
 // D at [820,855)+[930,960), A at [880,910)+[990,1015)
+// DOWNWELL_TAPE_FILE: per-frame tape from a converted .ltm (ltm2tape.py):
+// one line per movie frame, chars S/L/R (space/left/right), '-' = none
+fn load_tape_file() -> Option<Vec<sim::Input>> {
+    let path = std::env::var("DOWNWELL_TAPE_FILE").ok()?;
+    let text = std::fs::read_to_string(path).ok()?;
+    Some(
+        text.lines()
+            .map(|l| sim::Input {
+                space: l.contains('S'),
+                left: l.contains('L'),
+                right: l.contains('R'),
+            })
+            .collect(),
+    )
+}
+
 fn tape(f: u32, enabled: bool) -> sim::Input {
     if !enabled {
         return sim::Input::default();
@@ -172,6 +188,7 @@ fn windowed(gpu: &mut Gpu, boot_us: u64) {
     // cross-engine input desync): compute the drive tape from our own tick
     // counter instead of relying on libTAS's frame-keyed SDL injection.
     let tape_mode = std::env::var("DOWNWELL_TAPE").is_ok();
+    let tape_file = load_tape_file(); // takes precedence over DOWNWELL_TAPE
     let mut tick_no: u64 = 0;
     let mut gs = sim::GameState::new();
     gs.boot(boot_us);
@@ -220,7 +237,10 @@ fn windowed(gpu: &mut Gpu, boot_us: u64) {
                 break 'run;
             }
         }
-        let input = if tape_mode {
+        let input = if let Some(t) = &tape_file {
+            let idx = tick_no as usize + if boot_saw_key { 2 } else { 1 };
+            t.get(idx).copied().unwrap_or_default()
+        } else if tape_mode {
             // same schedule the lua injects into GM, keyed to our ticks.
             // GM's X11 KeyUp lands one frame before the staged schedule ends:
             // AND consecutive frames to shorten each hold's tail by one

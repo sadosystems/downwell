@@ -25,11 +25,12 @@ const CLASSIC_H: usize = 568;
 const SCALE: f32 = 2.0;
 const CLASSIC_OFF_X: f32 = 220.0;
 
-// cinema view, GUI units: the full 416-wide room (the frame locks — no
-// horizontal panning), exactly the surface height — so vertically it frames
-// what classic frames
-const CIN_W: i32 = 416;
-const CIN_H: i32 = 284;
+// cinema view, GUI units: wider and taller than the 416x1200 room — the
+// custom web overworld is the sim's room with the ground plane continued
+// sideways/downward and the starfield extended (see the extension pass in
+// rasterize_cinema). The frame locks horizontally (room fully in view).
+const CIN_W: i32 = 560;
+const CIN_H: i32 = 382;
 
 // framebuffer holds whichever mode is larger
 const FB_LEN: usize = {
@@ -169,9 +170,13 @@ fn rasterize_cinema(gs: &sim::GameState, dl: &sim::DrawList, fb: &mut [u8], pal:
     // sim's view origin (sim/src/lib.rs app_surface), recomputed identically
     let vx = (gs.cam.x - 80).clamp(0, 416 - 160);
     let vy = (gs.cam.y - 142).clamp(0, 1200 - 284);
-    // ours: camera-centered, clamped to the same room bounds
-    let vxc = (gs.cam.x - CIN_W / 2).clamp(0, 416 - CIN_W);
-    let vyc = (gs.cam.y - CIN_H / 2).clamp(0, 1200 - CIN_H);
+    // ours: a LOCKED stage frame — room centered horizontally, vertical
+    // anchor on the camera's settled menu height (448). The frame covers the
+    // whole playable area, so the player can never walk or jump off screen
+    // and the camera never moves (sim camera motion is absorbed by the
+    // re-anchoring delta below).
+    let vxc = (416 - CIN_W) / 2;
+    let vyc = 448 - CIN_H / 2;
     let v = View {
         w: (CIN_W as f32 * SCALE) as usize,
         h: (CIN_H as f32 * SCALE) as usize,
@@ -184,12 +189,34 @@ fn rasterize_cinema(gs: &sim::GameState, dl: &sim::DrawList, fb: &mut [u8], pal:
     // "inside the shader", unlike classic's black window margins)
     let d = pal[2];
     clear(fb, v.w * v.h, [to_u8(d[0]), to_u8(d[1]), to_u8(d[2])]);
+    // custom overworld: the sim's room, but wider. Pre-scan for the flat
+    // surface tile's frame (sprite 76, tile row y=528, sampled mid-room so a
+    // regenerated room keeps working); the extension pass below lays extra
+    // ground under/around the sim's own tiles.
+    let mut surf_frame = 0u16;
+    let mut best = i32::MAX;
+    for c in &dl.cmds[..dl.n] {
+        if c.pal == 2 && c.sprite == 76 && c.y as i32 + vy == 520 {
+            let d = (c.x as i32 + vx + 8 - 208).abs();
+            if d < best {
+                best = d;
+                surf_frame = c.frame;
+            }
+        }
+    }
+    let mut ground_emitted = false;
     // the rmMenu dissolve tiles the 160x284 surface; retile it over the whole
     // movie window at the same dither frame (view-anchored, not world)
     let mut dissolve: Option<u16> = None;
     for c in &dl.cmds[..dl.n] {
         if c.pal != 2 {
             continue; // HUD, tablet borders, splash overlay
+        }
+        // lay the extended ground just before the room's own tiles, so the
+        // real tiles (and the well/shaft, drawn later) paint over it
+        if !ground_emitted && (c.sprite == 76 || c.sprite == 997) {
+            ground_emitted = true;
+            ground_extension(fb, &v, pal, vx, vy, vxc, vyc, surf_frame);
         }
         if c.sprite == sim::spr::DITHER {
             dissolve = Some(c.frame);
