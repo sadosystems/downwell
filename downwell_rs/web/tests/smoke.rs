@@ -42,6 +42,13 @@ fn both_views_render_without_splash() {
     web::frame(0);
     dump("web_cin_palette.ppm");
 
+    // frame-time ballpark (native; wasm runs ~1.5-2x slower)
+    let t0 = std::time::Instant::now();
+    for _ in 0..300 {
+        web::frame(4);
+    }
+    eprintln!("[perf] {:.2} ms/frame", t0.elapsed().as_secs_f64() * 1000.0 / 300.0);
+
     // classic: full GM window
     web::boot(1);
     for _ in 0..600 {

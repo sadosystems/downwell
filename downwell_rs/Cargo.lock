@@ -867,6 +867,10 @@ name = "web"
 version = "0.1.0"
 dependencies = [
  "sim",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+ "wgpu",
 ]
 
 [[package]]

@@ -8,5 +8,9 @@ crate-type = ["cdylib", "rlib"] # rlib: native `cargo test` smoke test
 
 [dependencies]
 sim = { path = "../sim" }
+wasm-bindgen = "0.2.126"
+wasm-bindgen-futures = "0.4.76"
+web-sys = { version = "0.3.103", features = ["HtmlCanvasElement"] }
+wgpu = { version = "22", features = ["webgl"] }
 # no other deps: plain extern "C" exports + hand-written JS glue, so the build
 # is just `cargo build --target wasm32-unknown-unknown` (no wasm-bindgen).

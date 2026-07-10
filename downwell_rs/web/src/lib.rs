@@ -22,7 +22,7 @@ mod atlas_gen;
 // classic view: GUI units -> window px, same mapping as app/src/main.rs
 const CLASSIC_W: usize = 760;
 const CLASSIC_H: usize = 568;
-const SCALE: f32 = 2.0;
+const SCALE: f32 = 2.0; // classic only; the cinema view renders at 1:1
 const CLASSIC_OFF_X: f32 = 220.0;
 
 // cinema view, GUI units: wider and taller than the 416x1200 room — the
@@ -34,7 +34,7 @@ const CIN_H: i32 = 382;
 
 // framebuffer holds whichever mode is larger
 const FB_LEN: usize = {
-    let cin = (CIN_W as usize * 2) * (CIN_H as usize * 2);
+    let cin = CIN_W as usize * CIN_H as usize; // cinema renders 1:1
     let classic = CLASSIC_W * CLASSIC_H;
     (if cin > classic { cin } else { classic }) * 4
 };
@@ -46,6 +46,7 @@ struct View {
     w: usize,          // fb px
     h: usize,
     off_x: f32,        // window-px x offset after scale
+    scale: f32,        // GUI units -> fb px
     dx: f32,           // GUI-unit world shift (cinema re-centering)
     dy: f32,
     clip: (f32, f32),  // pal=2 x clip, window px
@@ -60,12 +61,31 @@ const DW_PAL: [[f32; 3]; 4] = [
     [0.0, 126.0 / 256.0, 250.0 / 256.0],
 ];
 
+const ATLAS_PX: usize = (atlas_gen::ATLAS_W * atlas_gen::ATLAS_H) as usize;
+
 struct Web {
     gs: sim::GameState,
     dl: sim::DrawList,
-    fb: [u8; FB_LEN],
     classic: bool,
     pal: [[f32; 3]; 4],
+    baked_dirty: bool,
+}
+
+// The two big buffers live in their own all-zero statics: zero-init memory
+// costs nothing in the wasm binary, while inside WEB (whose initializer has
+// non-zero fields) they'd be emitted as a multi-MB data segment.
+// FB: the output framebuffer. BAKED: the palette-baked atlas — the palette
+// classification is identical for every white-tinted draw, so it's baked per
+// palette change, not per pixel per frame (that was 5x the frame budget).
+static mut FB: [u8; FB_LEN] = [0; FB_LEN];
+static mut BAKED: [u8; ATLAS_PX * 4] = [0; ATLAS_PX * 4];
+
+fn fb_buf() -> &'static mut [u8; FB_LEN] {
+    unsafe { &mut *core::ptr::addr_of_mut!(FB) }
+}
+
+fn baked_buf() -> &'static mut [u8; ATLAS_PX * 4] {
+    unsafe { &mut *core::ptr::addr_of_mut!(BAKED) }
 }
 
 // const-initialized: lives in zeroed wasm memory, no startup construction on
@@ -73,9 +93,9 @@ struct Web {
 static mut WEB: Web = Web {
     gs: sim::GameState::new(),
     dl: sim::DrawList::EMPTY,
-    fb: [0; FB_LEN],
     classic: false,
     pal: DW_PAL,
+    baked_dirty: true,
 };
 
 fn web() -> &'static mut Web {
@@ -91,6 +111,7 @@ pub extern "C" fn boot(classic: u32) {
     w.gs.show_splash = 0; // skip the intro credits (sim's own no-splash path)
     w.classic = classic != 0;
     w.pal = DW_PAL;
+    w.baked_dirty = true;
 }
 
 // swap the four palette slots (0xRRGGBB each), GM order: light, mid, dark,
@@ -104,7 +125,9 @@ pub extern "C" fn set_palette(l: u32, m: u32, d: u32, s: u32) {
             (v & 0xFF) as f32 / 255.0,
         ]
     }
-    web().pal = [unpack(l), unpack(m), unpack(d), unpack(s)];
+    let w = web();
+    w.pal = [unpack(l), unpack(m), unpack(d), unpack(s)];
+    w.baked_dirty = true;
 }
 
 // input bits: 1 = space, 2 = left, 4 = right
@@ -118,26 +141,49 @@ pub extern "C" fn frame(input: u32) {
     };
     sim::tick(&mut w.gs, inp);
     sim::draw(&mut w.gs, &mut w.dl); // mutates state like GM's draw event: once per tick
+    if w.baked_dirty {
+        bake(&w.pal, baked_buf());
+        w.baked_dirty = false;
+    }
     if w.classic {
-        rasterize_classic(&w.dl, &mut w.fb, &w.pal);
+        rasterize_classic(&w.dl, fb_buf(), &w.pal, baked_buf());
     } else {
-        rasterize_cinema(&w.gs, &w.dl, &mut w.fb, &w.pal);
+        rasterize_cinema(&w.gs, &w.dl, fb_buf(), &w.pal, baked_buf());
+    }
+}
+
+// run the palette over every atlas texel once; draw_cmd's hot path then just
+// samples and copies
+fn bake(pal: &[[f32; 3]; 4], out: &mut [u8; ATLAS_PX * 4]) {
+    for (i, t) in ATLAS.chunks_exact(4).enumerate() {
+        let mut c = [
+            t[0] as f32 / 255.0,
+            t[1] as f32 / 255.0,
+            t[2] as f32 / 255.0,
+            t[3] as f32 / 255.0,
+        ];
+        palette(&mut c, pal);
+        let o = &mut out[i * 4..][..4];
+        o[0] = to_u8(c[0]);
+        o[1] = to_u8(c[1]);
+        o[2] = to_u8(c[2]);
+        o[3] = if c[3] >= 0.5 { 255 } else { 0 };
     }
 }
 
 #[no_mangle]
 pub extern "C" fn fb_ptr() -> *const u8 {
-    web().fb.as_ptr()
+    fb_buf().as_ptr()
 }
 
 #[no_mangle]
 pub extern "C" fn fb_w() -> u32 {
-    if web().classic { CLASSIC_W as u32 } else { (CIN_W as f32 * SCALE) as u32 }
+    if web().classic { CLASSIC_W as u32 } else { CIN_W as u32 }
 }
 
 #[no_mangle]
 pub extern "C" fn fb_h() -> u32 {
-    if web().classic { CLASSIC_H as u32 } else { (CIN_H as f32 * SCALE) as u32 }
+    if web().classic { CLASSIC_H as u32 } else { CIN_H as u32 }
 }
 
 // ---- view assembly ---------------------------------------------------------
@@ -146,11 +192,12 @@ fn clear(fb: &mut [u8], n: usize, c: [u8; 3]) {
     fb[..n * 4].chunks_exact_mut(4).for_each(|p| p.copy_from_slice(&[c[0], c[1], c[2], 255]));
 }
 
-fn rasterize_classic(dl: &sim::DrawList, fb: &mut [u8], pal: &[[f32; 3]; 4]) {
+fn rasterize_classic(dl: &sim::DrawList, fb: &mut [u8], pal: &[[f32; 3]; 4], baked: &[u8]) {
     let v = View {
         w: CLASSIC_W,
         h: CLASSIC_H,
         off_x: CLASSIC_OFF_X,
+        scale: SCALE,
         dx: 0.0,
         dy: 0.0,
         clip: (220.0, 540.0),
@@ -159,31 +206,38 @@ fn rasterize_classic(dl: &sim::DrawList, fb: &mut [u8], pal: &[[f32; 3]; 4]) {
     // rect runs through the shader)
     clear(fb, v.w * v.h, [0, 0, 0]);
     for c in &dl.cmds[..dl.n] {
-        draw_cmd(c, fb, &v, pal);
+        draw_cmd(c, fb, &v, pal, baked);
     }
 }
 
 // Movie crop: world draws only (pal=2), camera re-centered for the wider
 // window. sim's draws are relative to its 160x284 view origin (vx, vy);
 // shifting them by (vx - vx_cin, vy - vy_cin) re-anchors them to ours.
-fn rasterize_cinema(gs: &sim::GameState, dl: &sim::DrawList, fb: &mut [u8], pal: &[[f32; 3]; 4]) {
+fn rasterize_cinema(gs: &sim::GameState, dl: &sim::DrawList, fb: &mut [u8], pal: &[[f32; 3]; 4], baked: &[u8]) {
     // sim's view origin (sim/src/lib.rs app_surface), recomputed identically
     let vx = (gs.cam.x - 80).clamp(0, 416 - 160);
     let vy = (gs.cam.y - 142).clamp(0, 1200 - 284);
     // ours: a LOCKED stage frame — room centered horizontally, vertical
     // anchor on the camera's settled menu height (448). The frame covers the
-    // whole playable area, so the player can never walk or jump off screen
-    // and the camera never moves (sim camera motion is absorbed by the
-    // re-anchoring delta below).
-    let vxc = (416 - CIN_W) / 2;
-    let vyc = 448 - CIN_H / 2;
+    // whole playable area, so the player can never walk or jump off screen;
+    // smooth camera follow is absorbed by the re-anchoring delta below.
+    // Screen shake passes through: the sim bakes shake into the integer
+    // cam.x/y around the smooth cam.xx/yy track, so the difference IS the
+    // shake offset — add it to the anchor and the frame jolts with shots.
+    let shake_x = gs.cam.x - sim::player::gm_round(gs.cam.xx);
+    let shake_y = gs.cam.y - sim::player::gm_round(gs.cam.yy);
+    let vxc = (416 - CIN_W) / 2 + shake_x;
+    let vyc = 448 - CIN_H / 2 + shake_y;
     let v = View {
-        w: (CIN_W as f32 * SCALE) as usize,
-        h: (CIN_H as f32 * SCALE) as usize,
+        // 1:1 — the art is one texel per GUI unit and the page rescales the
+        // canvas anyway; a 2x fb would quadruple raster+blit cost for nothing
+        w: CIN_W as usize,
+        h: CIN_H as usize,
         off_x: 0.0,
+        scale: 1.0,
         dx: (vx - vxc) as f32,
         dy: (vy - vyc) as f32,
-        clip: (0.0, CIN_W as f32 * SCALE),
+        clip: (0.0, CIN_W as f32),
     };
     // frame background = the palette's dark slot (the whole movie frame is
     // "inside the shader", unlike classic's black window margins)
@@ -216,7 +270,7 @@ fn rasterize_cinema(gs: &sim::GameState, dl: &sim::DrawList, fb: &mut [u8], pal:
         // real tiles (and the well/shaft, drawn later) paint over it
         if !ground_emitted && (c.sprite == 76 || c.sprite == 997) {
             ground_emitted = true;
-            ground_extension(fb, &v, pal, vx, vy, vxc, vyc, surf_frame);
+            ground_extension(fb, &v, pal, baked, vx, vy, vxc, vyc, surf_frame);
         }
         if c.sprite == sim::spr::DITHER {
             dissolve = Some(c.frame);
@@ -227,13 +281,22 @@ fn rasterize_cinema(gs: &sim::GameState, dl: &sim::DrawList, fb: &mut [u8], pal:
         // the stars along with the camera. In the movie frame the backdrop is
         // world-locked at its camera-at-rest position — (146,407), the sim's
         // boot values; 119/104 is the draw origin from menu.rs — so it can't
-        // slide against the rest of the scene. (+10,+86): framing nudge for
-        // the movie crop.
+        // slide against the rest of the scene. (+10,+65): framing nudge —
+        // keeps the starfield at the same relative height it had in the
+        // 284-tall frame. The 240-wide backdrop doesn't span the custom
+        // room, so flank it with copies of frame 2 (the moonless sparse
+        // starfield) on each side — stars edge to edge, one moon.
         if c.sprite == 369 {
             let mut fixed = *c;
             fixed.x = (146 + 10 - 119 - vx) as f32;
-            fixed.y = (407 + 86 - 104 - vy) as f32;
-            draw_cmd(&fixed, fb, &v, pal);
+            fixed.y = (407 + 65 - 104 - vy) as f32;
+            draw_cmd(&fixed, fb, &v, pal, baked);
+            let mut flank = fixed;
+            flank.frame = 2;
+            flank.x -= 240.0;
+            draw_cmd(&flank, fb, &v, pal, baked);
+            flank.x += 480.0;
+            draw_cmd(&flank, fb, &v, pal, baked);
             continue;
         }
         // no DOWNWELL wordmark in the movie frame: skip the title fade
@@ -253,7 +316,7 @@ fn rasterize_cinema(gs: &sim::GameState, dl: &sim::DrawList, fb: &mut [u8], pal:
         {
             continue;
         }
-        draw_cmd(c, fb, &v, pal);
+        draw_cmd(c, fb, &v, pal, baked);
     }
     if let Some(frame) = dissolve {
         let anchored = View { dx: 0.0, dy: 0.0, ..v };
@@ -272,7 +335,7 @@ fn rasterize_cinema(gs: &sim::GameState, dl: &sim::DrawList, fb: &mut [u8], pal:
                     pal: 2,
                     rot: 0.0,
                 };
-                draw_cmd(&tile, fb, &anchored, pal);
+                draw_cmd(&tile, fb, &anchored, pal, baked);
                 x += 8;
             }
             y += 8;
@@ -280,9 +343,65 @@ fn rasterize_cinema(gs: &sim::GameState, dl: &sim::DrawList, fb: &mut [u8], pal:
     }
 }
 
+// The custom overworld's extra ground, drawn just before the room's own
+// tiles (which paint over it, as do the well/shaft): the flat surface row
+// (sprite 76, tile grid y=528, frame sampled from the room) continued
+// sideways past the room's -32..448 tile span, and dirt fill (997) tiled
+// across the whole below-ground region of the frame. World-space grids match
+// the room's own (surface x = -32+16k, dirt from y=536), so extension tiles
+// land pixel-exact on the originals they meet.
+fn ground_extension(
+    fb: &mut [u8],
+    v: &View,
+    pal: &[[f32; 3]; 4],
+    baked: &[u8],
+    vx: i32,
+    vy: i32,
+    vxc: i32,
+    vyc: i32,
+    surf_frame: u16,
+) {
+    let tile = |fb: &mut [u8], sprite: u16, frame: u16, x: f32, y: f32| {
+        let c = sim::DrawCmd {
+            sprite,
+            frame,
+            x,
+            y,
+            w: 16.0,
+            h: 16.0,
+            color: sim::C_WHITE,
+            pal: 2,
+            rot: 0.0,
+        };
+        draw_cmd(&c, fb, v, pal, baked);
+    };
+    // surface row: outside the room's own tiles only
+    let mut wx = -32 - 16;
+    while wx + 8 > vxc - 16 {
+        tile(fb, 76, surf_frame, (wx - 8 - vx) as f32, (520 - vy) as f32);
+        wx -= 16;
+    }
+    let mut wx = 448 + 16;
+    while wx - 8 < vxc + CIN_W {
+        tile(fb, 76, surf_frame, (wx - 8 - vx) as f32, (520 - vy) as f32);
+        wx += 16;
+    }
+    // dirt: the whole below-ground region (overdraws the room's fillers with
+    // the same texture; the room's tiles re-paint theirs right after anyway)
+    let mut wy = 536;
+    while wy < vyc + CIN_H {
+        let mut wx = -24 - ((-24 - (vxc - 16)) / 16) * 16 - 16;
+        while wx < vxc + CIN_W {
+            tile(fb, 997, 0, (wx - vx) as f32, (wy - vy) as f32);
+            wx += 16;
+        }
+        wy += 16;
+    }
+}
+
 // ---- software rasterizer: mirrors app/src/shader.wgsl ---------------------
 
-fn draw_cmd(c: &sim::DrawCmd, fb: &mut [u8], v: &View, pal: &[[f32; 3]; 4]) {
+fn draw_cmd(c: &sim::DrawCmd, fb: &mut [u8], v: &View, pal: &[[f32; 3]; 4], baked: &[u8]) {
     let (rx, ry, rw, rh) = atlas_gen::sprite_rect(c.sprite, c.frame);
     if rw == 0 || rh == 0 {
         return;
@@ -303,10 +422,10 @@ fn draw_cmd(c: &sim::DrawCmd, fb: &mut [u8], v: &View, pal: &[[f32; 3]; 4]) {
         (ry as f32, (ry + rh) as f32)
     };
     // window-px rect
-    let wx = (gx + v.dx) * SCALE + v.off_x;
-    let wy = (gy + v.dy) * SCALE;
-    let ww = gw * SCALE;
-    let wh = gh * SCALE;
+    let wx = (gx + v.dx) * v.scale + v.off_x;
+    let wy = (gy + v.dy) * v.scale;
+    let ww = gw * v.scale;
+    let wh = gh * v.scale;
 
     let tint = [
         ((c.color >> 24) & 0xFF) as f32 / 255.0,
@@ -340,6 +459,58 @@ fn draw_cmd(c: &sim::DrawCmd, fb: &mut [u8], v: &View, pal: &[[f32; 3]; 4]) {
     let px1 = ((x1.min(clip_x.1) - 0.5).ceil()).clamp(0.0, v.w as f32) as usize;
     let py0 = (y0.max(0.0) - 0.5).ceil() as usize;
     let py1 = ((y1 - 0.5).ceil()).clamp(0.0, v.h as f32) as usize;
+    if px0 >= px1 || py0 >= py1 {
+        return;
+    }
+
+    // ---- fast paths (the whole cinema frame in practice) ----
+    // solid rect: uniform colour, no sampling (RECT's texel is solid white,
+    // so texel * tint == tint; same classification as the slow path)
+    if c.sprite == sim::spr::RECT && th == 0.0 {
+        let mut col = tint;
+        if c.pal >= 1 {
+            palette(&mut col, pal);
+        }
+        if col[3] >= 1.0 {
+            let b = [to_u8(col[0]), to_u8(col[1]), to_u8(col[2]), 255];
+            for py in py0..py1 {
+                fb[(py * v.w + px0) * 4..(py * v.w + px1) * 4]
+                    .chunks_exact_mut(4)
+                    .for_each(|p| p.copy_from_slice(&b));
+            }
+        } else if col[3] > 0.0 {
+            for py in py0..py1 {
+                for px in px0..px1 {
+                    blend(fb, py * v.w + px, col);
+                }
+            }
+        }
+        return;
+    }
+    // white-tinted palette sprite, axis-aligned: sample the palette-baked
+    // atlas and copy — binary alpha, so "skip or overwrite" is exact
+    if c.pal >= 1 && c.color == sim::C_WHITE && th == 0.0 {
+        const AW: usize = atlas_gen::ATLAS_W as usize;
+        const AH: usize = atlas_gen::ATLAS_H as usize;
+        let du = (u1 - u0) / ww;
+        let dv = (v1 - v0) / wh;
+        let mut av_f = v0 + (py0 as f32 + 0.5 - wy) * dv;
+        for py in py0..py1 {
+            let arow = (av_f as usize).min(AH - 1) * AW;
+            av_f += dv;
+            let mut au_f = u0 + (px0 as f32 + 0.5 - wx) * du;
+            let frow = py * v.w;
+            for px in px0..px1 {
+                let au = (au_f as usize).min(AW - 1);
+                au_f += du;
+                let s = &baked[(arow + au) * 4..][..4];
+                if s[3] != 0 {
+                    fb[(frow + px) * 4..][..4].copy_from_slice(s);
+                }
+            }
+        }
+        return;
+    }
 
     let (s, co) = th.sin_cos();
     let ctr = (wx + 0.5 * ww, wy + 0.5 * wh);

@@ -384,3 +384,42 @@ forensics in scratchpad order7.json era). Acceptance command:
     --frames 1100 --allowance 100 --json -
 Remaining on the menu surface: drive_welltaro tape shooting era (~180 diffs from ~810) —
 suspects: RNG stream audit during shake, muzzle rotation raster, EMPTY-branch visuals.
+
+## CAMPAIGN: dive -> rmPlayMenu -> rmMain generation (task #9) — architecture (all read from GML)
+STAGE 1 — dive out of rmMenu:
+  objTeleportMain (240,640) cc: destination=1. Player collision: goalStop=1, noControl=1, active=1.
+  Step_1: once titleOk (set by title's Alarm_1 via objTeleportMain.titleOk) -> alarm[1]=30 ->
+  EnterSequence: cam roomEnd=-1, camLocker.pointery accelerates down (ysp+=0.25) to y>1000,
+  then blackSet -> alarm[0]=5 -> room_goto(rmPlayMenu). Draw: black cover once blackSet.
+STAGE 2 — rmPlayMenu (room 8, 160x568, single PlayMenu instance at (80,128)):
+  Create: cursorAt=global.playStyle, whompCreate, loadForArea(1), styleInit (styleMax=4).
+  Step_1 (when yall==0 && !selected): dRightPressed/dLeftPressed move cursorAt 0..4 + styleUpdate;
+  far-left toggles hardMode (if unlocked). dUp selects (if styleUnlock >= cursorAt):
+  playStyle=cursorAt, save.ini writes, selected=1. Draw runs the descend anim (plSpDescend,
+  ysp+=0.05) + sprEnterDither wipe (dithy+=16/frame) + vdithy curtain -> scrNextLevel(1) ->
+  room_goto(rmMain), wallTile=levelTile[area]. Sprites: styleRun[], sprSelectArrow, sprHardSkull,
+  sprEnterDither; text via draw_text (font0) + border text.
+STAGE 3 — rmMain (room 11, 480x300000!, view follows player, wrapMode horizontal):
+  244 static instances (room_main_gen.rs) incl. objBuilder(-16,704) whose Create = scrBuilderCreation,
+  Step_0 = scrBuilder (stream chunks when builder.y within view+128 and !endReached).
+  scrBuilderCreation (area 1): scrLevelPat1: extraColumn=level+1, levelLength=15+level,
+  genCount=-10 (or -30 first boot: firstBoot 2 gate!), rightRoomAmt=choose(2,2,3), shopMade gate
+  (area1 level1 playStyle!=4 -> shopMade=1, rightRoomAmt=2); tables partStart/Main/Right/ShopR/End
+  (patterns_gen.rs, index sentinel [100]=len-1); side-room slot picking: rightRoom[i]=
+  irandom_range(3,levelLength-1) with anti-adjacency reroll loop (wl>100 bail 9999).
+  scrBuilder per emission: pixelBuilt check; genCount<-1 -> blank 2-row chunk; ==-1 ->
+  partStart[irandom]; side-room slots -> makeShop gates (playStyle choose tables) partShopR/
+  partRight + sideRoomLog reroll loop (wl>60); filler logic area3 only; else partMain[irandom]
+  with while(rand==prvstr) reroll; genCount>levelLength -> partEnd, endReached.
+  Stamping: reverseBuild=choose(0,1) per chunk (mirrors x); parse chars (skip \t, skip leading
+  CR/LF, 9-wide rows via scrSetBuildx + k row counter — READ scrSetBuildx + builderCavern NEXT);
+  cells: 1=wall 2=choose wall 3=choose box B=box -=thin W=watertop $=Shop \\=sign @=chunkOrCrate
+  state machine (293/109) + hp/style overrides, +=GunModule, %=?(likely gem block — in
+  builderCavern?), e/b/c/d/f/t/^/=/{/}/O/J/_ = enemies/markers (in builder* per-area scripts).
+  ALL choose/irandom calls consume the SHARED WELL stream — stamp order = RNG order.
+STAGE-3 DEPENDENCIES also needed: objBox_n (destructible), enemies spawned by letters, Spawner,
+  objDepthMeter (player create in rmMain), camera autoScroll=0 path, wrapMode player physics,
+  levelBeginCue, HUD in-well bits, startTimeField, obj_enter_dither/objEnterDither reveal.
+PLAN: Stage 1+2 first (bounded UI work, verify via .ltm recording that dives + picks default style),
+  then Stage 3 area-1-only with enemies stubbed-but-RNG-exact (spawn draws consumed, objects
+  static until ported), verified by seed-0 and seed-7 dives to first landing, then enemy sim.
