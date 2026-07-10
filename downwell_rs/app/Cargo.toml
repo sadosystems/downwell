@@ -1,0 +1,10 @@
+[package]
+name = "app"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+sim = { path = "../sim" }
+wgpu = "22"
+pollster = "0.3"
+sdl2 = "0.37"

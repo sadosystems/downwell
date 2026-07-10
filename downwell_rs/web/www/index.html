@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<!-- downwell_rs browser frontend. Serve this directory plus web.wasm
+     (web/build.sh does both) and open in a browser.
+     Default is the cinema view (movie crop, no HUD); add ?classic for the
+     full GM window. Controls: Space = jump/shoot, A/Left, D/Right. -->
+<meta charset="utf-8">
+<title>downwell_rs</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; }
+  body { display: grid; place-items: center; }
+  canvas { image-rendering: pixelated; }
+</style>
+<canvas id="c"></canvas>
+<script type="module">
+const { instance } = await WebAssembly.instantiateStreaming(fetch("web.wasm"));
+const wasm = instance.exports;
+wasm.boot(new URLSearchParams(location.search).has("classic") ? 1 : 0);
+
+const W = wasm.fb_w(), H = wasm.fb_h();
+const canvas = document.getElementById("c");
+canvas.width = W;
+canvas.height = H;
+const ctx = canvas.getContext("2d");
+const img = new ImageData(W, H);
+
+// input bits: 1 = space, 2 = left, 4 = right
+const KEYS = { Space: 1, KeyA: 2, ArrowLeft: 2, KeyD: 4, ArrowRight: 4 };
+let held = 0;
+addEventListener("keydown", e => {
+  if (KEYS[e.code]) { held |= KEYS[e.code]; e.preventDefault(); }
+});
+addEventListener("keyup", e => {
+  if (KEYS[e.code]) { held &= ~KEYS[e.code]; e.preventDefault(); }
+});
+
+// fixed 60 Hz sim under a free-running rAF (which may be 120+ Hz)
+const DT = 1000 / 60;
+let last = performance.now(), acc = 0;
+function loop(now) {
+  acc = Math.min(acc + (now - last), 4 * DT); // cap: no catch-up spiral
+  last = now;
+  let ticked = false;
+  while (acc >= DT) {
+    wasm.frame(held);
+    acc -= DT;
+    ticked = true;
+  }
+  if (ticked) {
+    // memory.buffer can detach on growth: take a fresh view every blit
+    img.data.set(new Uint8ClampedArray(wasm.memory.buffer, wasm.fb_ptr(), W * H * 4));
+    ctx.putImageData(img, 0, 0);
+  }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
