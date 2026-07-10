@@ -12,6 +12,9 @@ use compose::{CIN_H, CIN_W};
 // so frontend-specific player fields set at boot do not survive that first
 // tick. Keep the custom web room's collision columns tied to its frame.
 const WEB_MENU_BOUNDS: [i32; 2] = [(416 - CIN_W) / 2, (416 - CIN_W) / 2 + CIN_W];
+const FLOOR_Y: f64 = 512.0;
+const ORIGINAL_FLOOR_LEFT: i32 = -40;
+const ORIGINAL_FLOOR_RIGHT: i32 = 455;
 
 fn configure_web_player(gs: &mut sim::GameState) {
     gs.pl.menu_bounds = WEB_MENU_BOUNDS;
@@ -23,6 +26,28 @@ fn configure_web_player(gs: &mut sim::GameState) {
         gs.pl.nap_x = 112.0;
         gs.pl.nap_y = 512.0;
         gs.pl.nap_xscale = 1.0;
+    }
+}
+
+fn resolve_extended_floor(gs: &mut sim::GameState, previous_y: f64) {
+    let p = &mut gs.pl;
+    // The original collision tiles cover x=-40..455. Outside that interval,
+    // give the visual floor extension the same top edge (mask bottom 519
+    // against tile top 520) while the player is crossing it downward.
+    let outside_original = p.x + 3 < ORIGINAL_FLOOR_LEFT || p.x - 4 > ORIGINAL_FLOOR_RIGHT;
+    if outside_original
+        && p.x >= WEB_MENU_BOUNDS[0]
+        && p.x < WEB_MENU_BOUNDS[1]
+        && p.ysp >= 0.0
+        && previous_y <= FLOOR_Y
+        && p.yy >= FLOOR_Y
+    {
+        p.yy = FLOOR_Y;
+        p.y = FLOOR_Y as i32;
+        p.ysp = 0.0;
+        p.ysp_carry = 0.0;
+        p.ycollision = 1;
+        p.grounded = true;
     }
 }
 
@@ -43,6 +68,7 @@ fn unpack(v: u32) -> [f32; 3] {
 
 fn tick(gs: &mut sim::GameState, dl: &mut sim::DrawList, input: u32) {
     configure_web_player(gs);
+    let previous_y = gs.pl.yy;
     sim::tick(
         gs,
         sim::Input {
@@ -54,6 +80,7 @@ fn tick(gs: &mut sim::GameState, dl: &mut sim::DrawList, input: u32) {
     // goto_menu() calls Player::create(), which resets menu_bounds. Restore it
     // immediately so the first controllable menu tick uses the widened room.
     configure_web_player(gs);
+    resolve_extended_floor(gs, previous_y);
     sim::draw(gs, dl);
 }
 
@@ -76,6 +103,37 @@ mod tests {
         assert_eq!(gs.pl.nap_sprite, 12);
         assert_eq!(gs.pl.nap_img_sp, 0.15);
         assert_eq!((gs.pl.nap_x, gs.pl.nap_y), (112.0, 512.0));
+    }
+
+    #[test]
+    fn extended_floor_catches_a_falling_player() {
+        let mut gs = sim::GameState::new();
+        gs.pl.exists = true;
+        gs.pl.x = 470;
+        gs.pl.yy = 513.0;
+        gs.pl.y = 513;
+        gs.pl.ysp = 1.0;
+
+        resolve_extended_floor(&mut gs, 511.0);
+
+        assert_eq!(gs.pl.yy, FLOOR_Y);
+        assert_eq!(gs.pl.ysp, 0.0);
+        assert!(gs.pl.grounded);
+    }
+
+    #[test]
+    fn extended_floor_does_not_interrupt_a_jump() {
+        let mut gs = sim::GameState::new();
+        gs.pl.exists = true;
+        gs.pl.x = 470;
+        gs.pl.yy = 511.0;
+        gs.pl.ysp = -2.0;
+
+        resolve_extended_floor(&mut gs, FLOOR_Y);
+
+        assert_eq!(gs.pl.yy, 511.0);
+        assert_eq!(gs.pl.ysp, -2.0);
+        assert!(!gs.pl.grounded);
     }
 }
 
