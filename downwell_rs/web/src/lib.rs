@@ -13,6 +13,19 @@ use compose::{CIN_H, CIN_W};
 // tick. Keep the custom web room's collision columns tied to its frame.
 const WEB_MENU_BOUNDS: [i32; 2] = [(416 - CIN_W) / 2, (416 - CIN_W) / 2 + CIN_W];
 
+fn configure_web_player(gs: &mut sim::GameState) {
+    gs.pl.menu_bounds = WEB_MENU_BOUNDS;
+    if gs.pl.napping {
+        // rmMenu chooses one of several idle poses at random. The web room
+        // always opens on the animated, upright bench pose (sprLegSwing).
+        gs.pl.nap_sprite = 12;
+        gs.pl.nap_img_sp = 0.15;
+        gs.pl.nap_x = 112.0;
+        gs.pl.nap_y = 512.0;
+        gs.pl.nap_xscale = 1.0;
+    }
+}
+
 const DW_PAL: [[f32; 3]; 4] = [
     [250.0 / 256.0, 250.0 / 256.0, 250.0 / 256.0],
     [250.0 / 256.0, 0.0, 0.0],
@@ -29,7 +42,7 @@ fn unpack(v: u32) -> [f32; 3] {
 }
 
 fn tick(gs: &mut sim::GameState, dl: &mut sim::DrawList, input: u32) {
-    gs.pl.menu_bounds = WEB_MENU_BOUNDS;
+    configure_web_player(gs);
     sim::tick(
         gs,
         sim::Input {
@@ -40,7 +53,7 @@ fn tick(gs: &mut sim::GameState, dl: &mut sim::DrawList, input: u32) {
     );
     // goto_menu() calls Player::create(), which resets menu_bounds. Restore it
     // immediately so the first controllable menu tick uses the widened room.
-    gs.pl.menu_bounds = WEB_MENU_BOUNDS;
+    configure_web_player(gs);
     sim::draw(gs, dl);
 }
 
@@ -60,6 +73,9 @@ mod tests {
 
         assert!(gs.room == sim::Room::Menu);
         assert_eq!(gs.pl.menu_bounds, WEB_MENU_BOUNDS);
+        assert_eq!(gs.pl.nap_sprite, 12);
+        assert_eq!(gs.pl.nap_img_sp, 0.15);
+        assert_eq!((gs.pl.nap_x, gs.pl.nap_y), (112.0, 512.0));
     }
 }
 
