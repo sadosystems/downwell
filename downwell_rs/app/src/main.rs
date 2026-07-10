@@ -59,7 +59,11 @@ fn main() {
     let boot_us = elapsed_us();
     if std::env::var("DOWNWELL_SEED_LOG").is_ok() {
         let lo = boot_us as u32;
-        eprintln!("[seed] elapsed_us={} seed={:#010x}", boot_us, lo.rotate_left(16) ^ lo.wrapping_add((boot_us >> 32) as u32));
+        eprintln!(
+            "[seed] elapsed_us={} seed={:#010x}",
+            boot_us,
+            lo.rotate_left(16) ^ lo.wrapping_add((boot_us >> 32) as u32)
+        );
     }
     // single-threaded software rasterization: llvmpipe/lavapipe worker threads
     // confuse libTAS's frame gating (irregular input staging). Must be set
@@ -111,8 +115,15 @@ fn tape(f: u32, enabled: bool) -> sim::Input {
     }
     // DOWNWELL_TAPE selects the schedule: "right_walk" = righ_walk.lua
     // (D held from f850, nothing else); any other value = drive_welltaro.lua
-    if std::env::var("DOWNWELL_TAPE").map(|v| v.contains("right")).unwrap_or(false) {
-        return sim::Input { space: false, left: false, right: f >= 850 };
+    if std::env::var("DOWNWELL_TAPE")
+        .map(|v| v.contains("right"))
+        .unwrap_or(false)
+    {
+        return sim::Input {
+            space: false,
+            left: false,
+            right: f >= 850,
+        };
     }
     let space = if f < 780 { f % 40 < 4 } else { f % 18 < 3 };
     let win = |lo: u32, hi: u32| f >= lo && f < hi;
@@ -136,12 +147,23 @@ fn headless(gpu: &mut Gpu, frames: u32, out_path: &str, driven: bool, boot_us: u
         sim::tick(&mut gs, tape(f + 2, driven));
         if sim_log && gs.pl.stammo != prev_stammo {
             let casings = gs.fx.iter().filter(|x| x.alive && x.kind == 2).count();
-            eprintln!("[ammo] t={} stammo {}->{} casings_alive={}", f, prev_stammo, gs.pl.stammo, casings);
+            eprintln!(
+                "[ammo] t={} stammo {}->{} casings_alive={}",
+                f, prev_stammo, gs.pl.stammo, casings
+            );
         }
         if sim_log && (350..=380).contains(&f) {
-            eprintln!("[sim] t={} ysp={:.20} yy={:.6} grounded={} spr={} idx={:.2} lock={} sd={}",
-                f, gs.pl.ysp, gs.pl.yy, gs.pl.grounded as u8, gs.pl.sprite_index,
-                gs.pl.image_index, gs.pl.jump_shoot_lock as u8, gs.pl.shot_delay as u8);
+            eprintln!(
+                "[sim] t={} ysp={:.20} yy={:.6} grounded={} spr={} idx={:.2} lock={} sd={}",
+                f,
+                gs.pl.ysp,
+                gs.pl.yy,
+                gs.pl.grounded as u8,
+                gs.pl.sprite_index,
+                gs.pl.image_index,
+                gs.pl.jump_shoot_lock as u8,
+                gs.pl.shot_delay as u8
+            );
         }
         sim::draw(&mut gs, &mut dl);
         gpu.render(&dl, &mut rgb);
@@ -208,7 +230,9 @@ fn windowed(gpu: &mut Gpu, boot_us: u64) {
             use sdl2::event::Event;
             use sdl2::keyboard::Scancode;
             match e {
-                Event::KeyDown { scancode: Some(sc), .. } => {
+                Event::KeyDown {
+                    scancode: Some(sc), ..
+                } => {
                     saw_key = true;
                     match sc {
                         Scancode::Space => k_space = true,
@@ -260,7 +284,10 @@ fn windowed(gpu: &mut Gpu, boot_us: u64) {
         let _ = (&k_space, &k_left, &k_right);
 
         if input_log && (input.space || input.left || input.right) {
-            eprintln!("[in] tick={} sp={} l={} r={}", tick_no, input.space as u8, input.left as u8, input.right as u8);
+            eprintln!(
+                "[in] tick={} sp={} l={} r={}",
+                tick_no, input.space as u8, input.left as u8, input.right as u8
+            );
         }
         tick_no += 1;
         sim::tick(&mut gs, input);
@@ -336,7 +363,11 @@ impl Gpu {
 
         let target = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("target"),
-            size: wgpu::Extent3d { width: WIN_W, height: WIN_H, depth_or_array_layers: 1 },
+            size: wgpu::Extent3d {
+                width: WIN_W,
+                height: WIN_H,
+                depth_or_array_layers: 1,
+            },
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
@@ -436,10 +467,27 @@ impl Gpu {
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        let insts =
-            vec![Inst { rect: [0.0; 4], uv: [0.0; 4], color: [0.0; 4], extra: [0.0; 4] }; sim::MAX_DRAW];
+        let insts = vec![
+            Inst {
+                rect: [0.0; 4],
+                uv: [0.0; 4],
+                color: [0.0; 4],
+                extra: [0.0; 4]
+            };
+            sim::MAX_DRAW
+        ];
 
-        Gpu { device, queue, target, target_view, readback, pipeline, bind_group, inst_buf, insts }
+        Gpu {
+            device,
+            queue,
+            target,
+            target_view,
+            readback,
+            pipeline,
+            bind_group,
+            inst_buf,
+            insts,
+        }
     }
 
     // render the draw list and read the frame back as RGB24 rows
@@ -494,8 +542,9 @@ impl Gpu {
             self.queue.write_buffer(&self.inst_buf, 0, bytes);
         }
 
-        let mut enc =
-            self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+        let mut enc = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
         {
             let mut rp = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: None,
@@ -533,7 +582,11 @@ impl Gpu {
                     rows_per_image: Some(WIN_H),
                 },
             },
-            wgpu::Extent3d { width: WIN_W, height: WIN_H, depth_or_array_layers: 1 },
+            wgpu::Extent3d {
+                width: WIN_W,
+                height: WIN_H,
+                depth_or_array_layers: 1,
+            },
         );
         self.queue.submit([enc.finish()]);
 

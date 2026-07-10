@@ -5,13 +5,17 @@
 // Camera: settles at (112,448) -> view (32,306) before anything is visible
 // (proven by pixel-exact template match; dynamic camera port comes with
 // gameplay — see NOTES.md open question on the y target).
-use crate::room_menu_gen::{MENU_FILLERS, MENU_GRASS, MENU_WALLS};
 use crate::rng::GmRng;
+use crate::room_menu_gen::{MENU_FILLERS, MENU_GRASS, MENU_WALLS};
 use crate::{spr, DrawCmd, DrawList, C_WHITE};
 
 fn floor_f64(v: f64) -> i32 {
     let t = v as i32;
-    if (t as f64) > v { t - 1 } else { t }
+    if (t as f64) > v {
+        t - 1
+    } else {
+        t
+    }
 }
 
 #[repr(C)]
@@ -29,14 +33,20 @@ pub struct Tuft {
 #[repr(C)]
 pub struct MenuScene {
     pub tufts: [Tuft; 14],
-    pub tree_frame: u16,       // objTree (spr 631)
+    pub tree_frame: u16,        // objTree (spr 631)
     pub trees_frames: [u16; 2], // groundTrees @160, @-16 (spr 646)
 }
 
 impl MenuScene {
     pub const fn zeroed() -> MenuScene {
         MenuScene {
-            tufts: [Tuft { x: 0, sprite: 0, speed: 0.0, idx: 0.0, alive: false }; 14],
+            tufts: [Tuft {
+                x: 0,
+                sprite: 0,
+                speed: 0.0,
+                idx: 0.0,
+                alive: false,
+            }; 14],
             tree_frame: 0,
             trees_frames: [0, 0],
         }
@@ -52,7 +62,13 @@ impl MenuScene {
             let speed = rng.random_range(0.15, 0.25) as f32;
             let idx = rng.irandom(3) as f32; // irandom(image_number - 1)
             let alive = rng.random(10.0) >= 1.0;
-            *tuft = Tuft { x: MENU_GRASS[t].0, sprite: 635 + v, speed, idx, alive };
+            *tuft = Tuft {
+                x: MENU_GRASS[t].0,
+                sprite: 635 + v,
+                speed,
+                idx,
+                alive,
+            };
             if t == 2 {
                 // objTree: choose(0,0,0,0,0,1)
                 self.tree_frame = if rng.choose_index(6) == 5 { 1 } else { 0 };
@@ -156,13 +172,13 @@ impl MenuScene {
 // sprite pixel sizes for the scene set (from gmdata)
 fn sprite_px(s: u16) -> (i32, i32) {
     match s {
-        631 => (128, 128),  // sprTree
-        646 => (80, 128),   // sprTrees
-        369 => (240, 160),  // bgNightsky
-        640 => (32, 32),    // sprBench
-        642 => (128, 128),  // sprWell2
-        76 => (16, 16),     // sprTileSurface
-        997 => (16, 16),    // tileCavern filler
+        631 => (128, 128), // sprTree
+        646 => (80, 128),  // sprTrees
+        369 => (240, 160), // bgNightsky
+        640 => (32, 32),   // sprBench
+        642 => (128, 128), // sprWell2
+        76 => (16, 16),    // sprTileSurface
+        997 => (16, 16),   // tileCavern filler
         11..=19 => (32, 32),
         635..=638 => (24, 16),
         _ => crate::sprite_size(s),

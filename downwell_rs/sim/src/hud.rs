@@ -2,9 +2,7 @@
 // playerHp=4/4, heartPiece=0/4, currency=0, ammo=stammo=8, pBulConRate=2,
 // meterJiggle=0, hudAmmoJiggle=0, chargeFrame[] steady at 3.8 (drawn as 3),
 // showTimer=-1 (false), ugHave=0. Dynamic paths port with gameplay later.
-use crate::{
-    spr, sprite_ext, sprite_stretched, DrawCmd, DrawList, C_WHITE,
-};
+use crate::{spr, sprite_ext, sprite_stretched, DrawCmd, DrawList, C_WHITE};
 
 fn spr_at(dl: &mut DrawList, s: u16, frame: u16, x: i32, y: i32) {
     // draw_sprite with origin (0,0) sprites — all HUD parts below qualify,
@@ -61,10 +59,20 @@ fn draw_sprite_gem_number(dl: &mut DrawList, x: i32, y: i32) {
 // drawSpriteAmmoNumber(x,y,digit) — single digit (stammo 0..8 in menu)
 fn draw_sprite_ammo_number(dl: &mut DrawList, x: i32, y: i32, d: u16) {
     let (nx, ny) = (x, y); // digits=0, numberx = x
-    // literal offset list from the GML (black frame +20)
+                           // literal offset list from the GML (black frame +20)
     const OFF: [(i32, i32); 12] = [
-        (-1, 0), (0, -1), (1, 0), (0, 1), (-1, 1), (0, 0),
-        (1, 1), (0, 2), (0, 0), (1, -1), (2, 0), (1, 1),
+        (-1, 0),
+        (0, -1),
+        (1, 0),
+        (0, 1),
+        (-1, 1),
+        (0, 0),
+        (1, 1),
+        (0, 2),
+        (0, 0),
+        (1, -1),
+        (2, 0),
+        (1, 1),
     ];
     for (dx, dy) in OFF {
         spr_at(dl, spr::SPRITE_NUMBER, d + 20, nx + dx, ny + dy);
@@ -86,11 +94,20 @@ pub struct HudState {
 impl HudState {
     pub const fn new() -> HudState {
         // scrDrawHudInitStuff (disp4x3): chargeFrame[i] = 3
-        HudState { charge_frame: [3.0; 185], ammo_jiggle: 0.0 }
+        HudState {
+            charge_frame: [3.0; 185],
+            ammo_jiggle: 0.0,
+        }
     }
 }
 
-pub fn draw_hud_4x3(dl: &mut DrawList, hs: &mut HudState, meter_jiggle: &mut f64, stammo: i32, p_fired: i32) {
+pub fn draw_hud_4x3(
+    dl: &mut DrawList,
+    hs: &mut HudState,
+    meter_jiggle: &mut f64,
+    stammo: i32,
+    p_fired: i32,
+) {
     // hp gauge: hpgx = -64-38 = -102, hpgy = 6
     let (hpgx, hpgy) = (-102, 6);
     let hpg_meter = 80.0; // 80 * hp/hpmax
@@ -129,7 +146,15 @@ pub fn draw_hud_4x3(dl: &mut DrawList, hs: &mut HudState, meter_jiggle: &mut f64
         whitebardrawy = 232.0;
     }
     if stammo > 0 {
-        sprite_stretched(dl, spr::DOT, 0, cmx + 5, whitebardrawy as i32, 10.0, -stammo_meter + 5.0);
+        sprite_stretched(
+            dl,
+            spr::DOT,
+            0,
+            cmx + 5,
+            whitebardrawy as i32,
+            10.0,
+            -stammo_meter + 5.0,
+        );
     }
     let mut i = 0usize;
     while i < 184 {
@@ -152,7 +177,13 @@ pub fn draw_hud_4x3(dl: &mut DrawList, hs: &mut HudState, meter_jiggle: &mut f64
         }
         let bardrawy = floor_f64(charge_metery - i as f64);
         if bardrawy < 232 {
-            spr_at(dl, charge_sprite, hs.charge_frame[i] as u16, cmx + 4, bardrawy);
+            spr_at(
+                dl,
+                charge_sprite,
+                hs.charge_frame[i] as u16,
+                cmx + 4,
+                bardrawy,
+            );
         }
         i += 1;
     }
@@ -160,7 +191,13 @@ pub fn draw_hud_4x3(dl: &mut DrawList, hs: &mut HudState, meter_jiggle: &mut f64
     let mut fi = 184.0f64 - meter_scale;
     while fi > 0.0 {
         if fi < stammo_meter {
-            spr_at(dl, spr::STAMMO_DIVIDE, 1, cmx + 4, floor_f64(charge_metery - fi));
+            spr_at(
+                dl,
+                spr::STAMMO_DIVIDE,
+                1,
+                cmx + 4,
+                floor_f64(charge_metery - fi),
+            );
         }
         fi -= meter_scale;
     }
@@ -168,11 +205,35 @@ pub fn draw_hud_4x3(dl: &mut DrawList, hs: &mut HudState, meter_jiggle: &mut f64
     let mut di = 184.0f64;
     while di > 0.0 {
         if di < stammo_meter {
-            spr_at(dl, spr::STAMMO_DIVIDE, 0, cmx + 4, floor_f64(charge_metery - di));
-            spr_at(dl, spr::STAMMO_DIVIDE, 1, cmx + 4, floor_f64(charge_metery - di + 1.0));
-            spr_at(dl, spr::STAMMO_DIVIDE, 1, cmx + 4, floor_f64(charge_metery - di - 1.0));
+            spr_at(
+                dl,
+                spr::STAMMO_DIVIDE,
+                0,
+                cmx + 4,
+                floor_f64(charge_metery - di),
+            );
+            spr_at(
+                dl,
+                spr::STAMMO_DIVIDE,
+                1,
+                cmx + 4,
+                floor_f64(charge_metery - di + 1.0),
+            );
+            spr_at(
+                dl,
+                spr::STAMMO_DIVIDE,
+                1,
+                cmx + 4,
+                floor_f64(charge_metery - di - 1.0),
+            );
         } else if di == stammo_meter || di == 1.0 {
-            spr_at(dl, spr::STAMMO_DIVIDE, 1, cmx + 4, floor_f64(charge_metery - di + 1.0));
+            spr_at(
+                dl,
+                spr::STAMMO_DIVIDE,
+                1,
+                cmx + 4,
+                floor_f64(charge_metery - di + 1.0),
+            );
         }
         di -= meter_divide;
     }

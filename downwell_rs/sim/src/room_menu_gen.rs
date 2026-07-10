@@ -270,6 +270,4 @@ pub const MENU_WALL_RECTS: [(i32, i32, i32, i32); 78] = [
 ];
 
 // parentThinwall family (platforms: collide only from above)
-pub const MENU_THIN_RECTS: [(i32, i32, i32, i32); 1] = [
-    (101, 514, 124, 515),
-];
+pub const MENU_THIN_RECTS: [(i32, i32, i32, i32); 1] = [(101, 514, 124, 515)];

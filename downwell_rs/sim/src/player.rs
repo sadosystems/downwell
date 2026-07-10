@@ -70,9 +70,15 @@ fn rects_meet(a: (i32, i32, i32, i32), b: &(i32, i32, i32, i32)) -> bool {
     a.0 <= b.2 && a.1 >= b.0 && a.2 <= b.3 && a.3 >= b.1
 }
 
-pub fn meet_wall(px: f64, py: f64) -> bool {
+fn meet_wall(px: f64, py: f64, menu_bounds: [i32; 2]) -> bool {
     let m = mask_rect(px, py);
-    MENU_WALL_RECTS.iter().any(|r| rects_meet(m, r))
+    let original_left = (-24, -512, -9, 1087);
+    let original_right = (424, -320, 439, 1279);
+    MENU_WALL_RECTS.iter().any(|r| {
+        (menu_bounds == [0, 0] || (*r != original_left && *r != original_right)) && rects_meet(m, r)
+    }) || (menu_bounds != [0, 0]
+        && (rects_meet(m, &(menu_bounds[0] - 16, -512, menu_bounds[0] - 1, 1279))
+            || rects_meet(m, &(menu_bounds[1], -512, menu_bounds[1] + 15, 1279))))
 }
 
 fn meet_thin(px: f64, py: f64) -> bool {
@@ -80,8 +86,28 @@ fn meet_thin(px: f64, py: f64) -> bool {
     MENU_THIN_RECTS.iter().any(|r| rects_meet(m, r))
 }
 
-fn meet_solid(px: f64, py: f64) -> bool {
-    meet_wall(px, py) || meet_thin(px, py)
+fn meet_solid(px: f64, py: f64, menu_bounds: [i32; 2]) -> bool {
+    meet_wall(px, py, menu_bounds) || meet_thin(px, py)
+}
+
+#[cfg(test)]
+mod collision_tests {
+    use super::meet_wall;
+
+    #[test]
+    fn wide_menu_replaces_original_side_walls_at_frame_edges() {
+        let wide = [-72, 488];
+        // Original columns remain exact for the capture-oriented frontend.
+        assert!(meet_wall(-5.0, 400.0, [0, 0]));
+        assert!(meet_wall(421.0, 400.0, [0, 0]));
+        // The footer can traverse those columns and stops at its visible ends.
+        assert!(!meet_wall(-5.0, 400.0, wide));
+        assert!(!meet_wall(421.0, 400.0, wide));
+        assert!(meet_wall(-69.0, 400.0, wide));
+        assert!(!meet_wall(-68.0, 400.0, wide));
+        assert!(!meet_wall(484.0, 400.0, wide));
+        assert!(meet_wall(485.0, 400.0, wide));
+    }
 }
 
 // GM round() = round half to EVEN (banker's): round(0.5)=0, round(1.5)=2,
@@ -243,6 +269,9 @@ pub struct Player {
     pub alarm10: i32,
     pub xcollision: i32,
     pub ycollision: i32,
+    /// Optional playable x range for alternate rmMenu presentations. Zeroes
+    /// preserve the original generated collision map exactly.
+    pub menu_bounds: [i32; 2],
     // globals mirrored
     pub spin_jumping: f64,
     pub plx: f64,
@@ -322,6 +351,7 @@ impl Player {
             alarm10: -1,
             xcollision: 0,
             ycollision: 0,
+            menu_bounds: [0, 0],
             spin_jumping: 0.0,
             plx: 0.0,
             ply: 0.0,
@@ -361,10 +391,8 @@ impl Player {
 
 // scrPlayerPlatformCollision / scrCheckCollisionWith translated: pixel-step
 // movers. meet: family test at a position.
-fn platform_collision(
-    p: &mut Player,
-    meet: fn(f64, f64) -> bool,
-) {
+fn platform_collision<F: Fn(f64, f64) -> bool + Copy>(p: &mut Player, meet: F) {
+    let menu_bounds = p.menu_bounds;
     let workx = gm_round(p.xx) as f64 + ceil_pos(p.xsp.abs()) * sign_f(p.xsp);
     let worky = gm_round(p.yy) as f64 + ceil_pos(p.ysp.abs()) * sign_f(p.ysp);
     p.xcollision = 0;
@@ -412,13 +440,13 @@ fn platform_collision(
         let mut ya = 0.0f64;
         loop {
             if meet(p.xx + xa + sign_f(p.xsp), p.yy + ya)
-                || meet_wall(p.xx + xa + sign_f(p.xsp), p.yy + ya)
+                || meet_wall(p.xx + xa + sign_f(p.xsp), p.yy + ya, menu_bounds)
             {
                 break;
             }
             xa += sign_f(p.xsp);
             if meet(p.xx + xa, p.yy + ya + sign_f(p.ysp))
-                || meet_wall(p.xx + xa, p.yy + ya + sign_f(p.ysp))
+                || meet_wall(p.xx + xa, p.yy + ya + sign_f(p.ysp), menu_bounds)
             {
                 break;
             }
@@ -506,14 +534,18 @@ impl Player {
             // !death
             if c.inp.d_left {
                 if self.xsp >= 0.0 && self.grounded && !c.inp.d_right && !self.wall_colliding {
-                    fx_spawn_seq(c.fx, c.fx_seq, Fx {
-                        kind: 0,
-                        x: self.xx,
-                        y: self.yy,
-                        image_speed: 0.5,
-                        emit_to: -1,
-                        ..Fx::default()
-                    });
+                    fx_spawn_seq(
+                        c.fx,
+                        c.fx_seq,
+                        Fx {
+                            kind: 0,
+                            x: self.xx,
+                            y: self.yy,
+                            image_speed: 0.5,
+                            emit_to: -1,
+                            ..Fx::default()
+                        },
+                    );
                 }
                 self.xsp -= MOVEACCL;
                 if self.grounded {
@@ -531,7 +563,7 @@ impl Player {
                         self.xsp = -AIRMAXSP;
                     }
                 }
-                if meet_wall(self.xx - 2.0, self.yy) {
+                if meet_wall(self.xx - 2.0, self.yy, self.menu_bounds) {
                     self.against_wall = -1;
                 }
                 if self.spin_jumping == 0.0 {
@@ -540,14 +572,18 @@ impl Player {
             }
             if c.inp.d_right {
                 if self.xsp <= 0.0 && self.grounded && !c.inp.d_left && !self.wall_colliding {
-                    fx_spawn_seq(c.fx, c.fx_seq, Fx {
-                        kind: 0,
-                        x: self.xx,
-                        y: self.yy,
-                        image_speed: 0.5,
-                        emit_to: 1,
-                        ..Fx::default()
-                    });
+                    fx_spawn_seq(
+                        c.fx,
+                        c.fx_seq,
+                        Fx {
+                            kind: 0,
+                            x: self.xx,
+                            y: self.yy,
+                            image_speed: 0.5,
+                            emit_to: 1,
+                            ..Fx::default()
+                        },
+                    );
                 }
                 self.xsp += MOVEACCL;
                 if self.grounded {
@@ -565,7 +601,7 @@ impl Player {
                         self.xsp = AIRMAXSP;
                     }
                 }
-                if meet_wall(self.xx + 2.0, self.yy) {
+                if meet_wall(self.xx + 2.0, self.yy, self.menu_bounds) {
                     self.against_wall = 1;
                 }
                 if self.spin_jumping == 0.0 {
@@ -619,14 +655,18 @@ impl Player {
             if self.airstatus {
                 self.airstatus = false;
                 // groundRoom -> no levelBeginCue
-                fx_spawn_seq(c.fx, c.fx_seq, Fx {
-                    kind: 0,
-                    x: self.xx,
-                    y: self.yy,
-                    image_speed: 0.5,
-                    emit_to: sign_f(self.xsp) as i8,
-                    ..Fx::default()
-                });
+                fx_spawn_seq(
+                    c.fx,
+                    c.fx_seq,
+                    Fx {
+                        kind: 0,
+                        x: self.xx,
+                        y: self.yy,
+                        image_speed: 0.5,
+                        emit_to: sign_f(self.xsp) as i8,
+                        ..Fx::default()
+                    },
+                );
                 if self.hard_land {
                     if c.inp.d_left || c.inp.d_right {
                         // (playStyle != 3, !gInWater) scrFjump(0, 1):
@@ -635,13 +675,17 @@ impl Player {
                         // scrRecharge (inside scrFjump)
                         if self.stammo < 8 {
                             self.stammo = 8;
-                            fx_spawn_seq(c.fx, c.fx_seq, Fx {
-                                kind: 4,
-                                x: self.plx,
-                                y: self.ply,
-                                image_speed: 1.0,
-                                ..Fx::zeroed()
-                            });
+                            fx_spawn_seq(
+                                c.fx,
+                                c.fx_seq,
+                                Fx {
+                                    kind: 4,
+                                    x: self.plx,
+                                    y: self.ply,
+                                    image_speed: 1.0,
+                                    ..Fx::zeroed()
+                                },
+                            );
                             c.cam.sshake(1.0, 2);
                             *c.meter_jiggle = 4.0;
                         }
@@ -703,7 +747,7 @@ impl Player {
             // bench isn't on the notes; skip)
             if self.grounded {
                 if self.tiny_jump_threshold {
-                    if !meet_wall(self.xx, self.yy - 16.0) {
+                    if !meet_wall(self.xx, self.yy - 16.0, self.menu_bounds) {
                         self.tiny_jump_threshold = false;
                     }
                 }
@@ -714,22 +758,30 @@ impl Player {
                     self.jump(c);
                 }
             } else if self.hard_land_jump {
-                if meet_solid(self.xx, self.yy + 8.0) {
+                if meet_solid(self.xx, self.yy + 8.0, self.menu_bounds) {
                     self.jump(c);
                 } else {
                     self.hard_land_jump = false;
                 }
             } else if self.spin_jumping != 0.0 {
                 if c.inp.d_left {
-                    if meet_wall(self.x as f64 + WALL_KICK_LENGTH, self.y as f64) {
-                        fx_spawn_seq(c.fx, c.fx_seq, Fx {
-                            kind: 1,
-                            x: self.x as f64,
-                            y: self.y as f64,
-                            image_speed: 0.5,
-                            angle: 90,
-                            ..Fx::default()
-                        });
+                    if meet_wall(
+                        self.x as f64 + WALL_KICK_LENGTH,
+                        self.y as f64,
+                        self.menu_bounds,
+                    ) {
+                        fx_spawn_seq(
+                            c.fx,
+                            c.fx_seq,
+                            Fx {
+                                kind: 1,
+                                x: self.x as f64,
+                                y: self.y as f64,
+                                image_speed: 0.5,
+                                angle: 90,
+                                ..Fx::default()
+                            },
+                        );
                         c.rng.well(); // soundPlay(choose(86)) — 1 draw
                         self.jump_shoot_lock = true;
                         self.grounded = false;
@@ -742,16 +794,24 @@ impl Player {
                         self.spin_jumping = 0.0;
                     }
                 } else if c.inp.d_right
-                    && meet_wall(self.x as f64 - WALL_KICK_LENGTH, self.y as f64)
+                    && meet_wall(
+                        self.x as f64 - WALL_KICK_LENGTH,
+                        self.y as f64,
+                        self.menu_bounds,
+                    )
                 {
-                    fx_spawn_seq(c.fx, c.fx_seq, Fx {
-                        kind: 1,
-                        x: self.x as f64,
-                        y: self.y as f64,
-                        image_speed: 0.5,
-                        angle: 270,
-                        ..Fx::default()
-                    });
+                    fx_spawn_seq(
+                        c.fx,
+                        c.fx_seq,
+                        Fx {
+                            kind: 1,
+                            x: self.x as f64,
+                            y: self.y as f64,
+                            image_speed: 0.5,
+                            angle: 270,
+                            ..Fx::default()
+                        },
+                    );
                     c.rng.well(); // choose(86)
                     self.jump_shoot_lock = true;
                     self.grounded = false;
@@ -784,11 +844,7 @@ impl Player {
             }
         }
         if c.inp.d_up_held && !self.grounded {
-            if !self.shot_delay
-                && !self.jump_shoot_lock
-                && !self.hard_land_jump
-                && !self.non_auto
-            {
+            if !self.shot_delay && !self.jump_shoot_lock && !self.hard_land_jump && !self.non_auto {
                 self.shoot(c);
             }
             // pugJet: none
@@ -803,13 +859,17 @@ impl Player {
         self.ysp = -JUMPSP;
         self.jumped = true;
         c.rng.well(); // soundPlay(choose(86)) — 1 draw
-        fx_spawn_seq(c.fx, c.fx_seq, Fx {
-            kind: 1,
-            x: self.x as f64,
-            y: self.y as f64,
-            image_speed: 0.5,
-            ..Fx::default()
-        });
+        fx_spawn_seq(
+            c.fx,
+            c.fx_seq,
+            Fx {
+                kind: 1,
+                x: self.x as f64,
+                y: self.y as f64,
+                image_speed: 0.5,
+                ..Fx::default()
+            },
+        );
         self.jump_shoot_lock = true;
         self.grounded = false;
         self.hard_land_jump = false;
@@ -827,40 +887,48 @@ impl Player {
         self.spin_jumping = 0.0;
         if self.stammo > 0 {
             c.cam.sshake(SHAKE_AMT, SHAKE_DUR); // scrSShake(2, 3)
-            // scrShotSound: no RNG
+                                                // scrShotSound: no RNG
             if self.ysp > RECOIL {
                 self.ysp = RECOIL;
             }
             // scrPlayerEmitBullet: muzzle fx + bullet instance
             let emitx = muzzlex + self.shoot_leg;
             self.shoot_leg *= -1.0;
-            fx_spawn_seq(c.fx, c.fx_seq, Fx {
-                kind: 3, // muzzle fx sprite 603
-                x: emitx,
-                y: self.y as f64 + 12.0,
-                image_speed: 0.5,
-                angle: shot_angle as i16,
-                ..Fx::default()
-            });
+            fx_spawn_seq(
+                c.fx,
+                c.fx_seq,
+                Fx {
+                    kind: 3, // muzzle fx sprite 603
+                    x: emitx,
+                    y: self.y as f64 + 12.0,
+                    image_speed: 0.5,
+                    angle: shot_angle as i16,
+                    ..Fx::default()
+                },
+            );
             // bullet object 261: TODO create (bullet pool) — accuracy 3,
             // speed 8, rangeRandom 2, rangeTimer 12 (RNG draws in create!)
             spawn_bullet(c, emitx, muzzley, shot_angle);
             self.alarm2 = ROF; // pBulRof 7 (positive -> auto)
-            // bulletCasing create: 3 RNG draws + physics
+                               // bulletCasing create: 3 RNG draws + physics
             let cx = c.rng.random_range(-3.0, -1.0) * sign_f(self.image_xscale);
             let cy = c.rng.random_range(-3.0, 0.0);
             let cs = [-0.5f32, -0.3, 0.0, 0.3, 0.5][c.rng.choose_index(5) as usize];
-            fx_spawn_seq(c.fx, c.fx_seq, Fx {
-                kind: 2,
-                x: self.x as f64,
-                y: self.y as f64,
-                xsp: cx,
-                ysp: cy,
-                image_speed: cs,
-                alarm0: 15,
-                d_flash: 1, // Fx::default() zeroes this; draw gate needs 1
-                ..Fx::default()
-            });
+            fx_spawn_seq(
+                c.fx,
+                c.fx_seq,
+                Fx {
+                    kind: 2,
+                    x: self.x as f64,
+                    y: self.y as f64,
+                    xsp: cx,
+                    ysp: cy,
+                    image_speed: cs,
+                    alarm0: 15,
+                    d_flash: 1, // Fx::default() zeroes this; draw gate needs 1
+                    ..Fx::default()
+                },
+            );
             self.p_fired = 1;
             self.stammo -= CON_RATE;
             if self.stammo <= 0 {
@@ -887,7 +955,7 @@ impl Player {
 
     fn sound_land(&mut self, c: &mut StepCtx) {
         // landOn = instance_place(x, y+2, sParentSolid): true when landing
-        if meet_solid(self.x as f64, self.y as f64 + 2.0) && !self.napping {
+        if meet_solid(self.x as f64, self.y as f64 + 2.0, self.menu_bounds) && !self.napping {
             // material switch selects bank; irandom_range(1, n) = 2 draws
             c.rng.irandom(0);
         }
@@ -907,15 +975,14 @@ impl Player {
         }
         // scrPlayerPlatformCollision(parentThinwall)
         platform_collision(self, meet_thin);
-        if self.ycollision == 1
-            && !meet_thin(self.xx, self.yy)
-            && meet_thin(self.xx, self.yy + 1.0)
+        if self.ycollision == 1 && !meet_thin(self.xx, self.yy) && meet_thin(self.xx, self.yy + 1.0)
         {
             self.grounded = true;
             self.ysp = 0.0;
         }
         // scrCheckCollisionWith(parentWall)
-        platform_collision(self, meet_wall);
+        let menu_bounds = self.menu_bounds;
+        platform_collision(self, |x, y| meet_wall(x, y, menu_bounds));
         if self.xcollision != 0 {
             self.xsp = 0.0;
             if self.xcollision == 1 {
@@ -930,7 +997,7 @@ impl Player {
         }
         if self.ycollision != 0 {
             if self.ycollision == 1 {
-                if meet_wall(self.xx, self.yy + 1.0) {
+                if meet_wall(self.xx, self.yy + 1.0, self.menu_bounds) {
                     self.grounded = true;
                     self.ysp = 0.0;
                 }
@@ -945,22 +1012,28 @@ impl Player {
                 // scrRecharge: stammo restore + fx + HUD jiggle + shake(1,2)
                 if self.stammo < 8 {
                     self.stammo = 8;
-                    fx_spawn_seq(c.fx, c.fx_seq, Fx {
-                        kind: 4, // effect sprite 111, speed 1, scale .75
-                        x: self.plx,
-                        y: self.ply,
-                        image_speed: 1.0,
-                        ..Fx::default()
-                    });
+                    fx_spawn_seq(
+                        c.fx,
+                        c.fx_seq,
+                        Fx {
+                            kind: 4, // effect sprite 111, speed 1, scale .75
+                            x: self.plx,
+                            y: self.ply,
+                            image_speed: 1.0,
+                            ..Fx::default()
+                        },
+                    );
                     c.cam.sshake(1.0, 2); // scrSShake(1, 2)
                     *c.meter_jiggle = 4.0;
                 }
             }
-            if meet_wall(self.xx, self.yy) && !meet_wall(self.xx, self.yy - 1.0) {
+            if meet_wall(self.xx, self.yy, self.menu_bounds)
+                && !meet_wall(self.xx, self.yy - 1.0, self.menu_bounds)
+            {
                 self.yy -= 1.0;
             }
         }
-        if !meet_solid(self.xx, self.yy + 1.0) && self.grounded {
+        if !meet_solid(self.xx, self.yy + 1.0, self.menu_bounds) && self.grounded {
             self.grounded = false;
             self.ysp += GRAV;
         }
@@ -1000,13 +1073,21 @@ impl Player {
                     self.sprite_index = SPR_SPIN;
                     self.image_speed = 0.3 * self.spin_jumping as f32;
                     if c.inp.d_left {
-                        if meet_wall(self.x as f64 + WALL_KICK_LENGTH, self.y as f64) {
+                        if meet_wall(
+                            self.x as f64 + WALL_KICK_LENGTH,
+                            self.y as f64,
+                            self.menu_bounds,
+                        ) {
                             self.sprite_index = 5; // sprPlayerWall (id TBD!)
                             self.image_index = 0.0;
                             self.image_xscale = -1.0;
                         }
                     } else if c.inp.d_right
-                        && meet_wall(self.x as f64 - WALL_KICK_LENGTH, self.y as f64)
+                        && meet_wall(
+                            self.x as f64 - WALL_KICK_LENGTH,
+                            self.y as f64,
+                            self.menu_bounds,
+                        )
                     {
                         self.sprite_index = 5;
                         self.image_index = 0.0;
@@ -1054,14 +1135,18 @@ impl Player {
                 self.napping = false;
                 if self.grounded {
                     self.sound_land(c);
-                    fx_spawn_seq(c.fx, c.fx_seq, Fx {
-                        kind: 0,
-                        x: self.xx,
-                        y: self.yy,
-                        image_speed: 0.5,
-                        emit_to: 0,
-                        ..Fx::default()
-                    });
+                    fx_spawn_seq(
+                        c.fx,
+                        c.fx_seq,
+                        Fx {
+                            kind: 0,
+                            x: self.xx,
+                            y: self.yy,
+                            image_speed: 0.5,
+                            emit_to: 0,
+                            ..Fx::default()
+                        },
+                    );
                 }
             }
         }
@@ -1151,7 +1236,11 @@ impl Player {
         dl.push(DrawCmd {
             sprite: self.sprite_index,
             frame: self.image_index as u16,
-            x: if flip { (sx + ox) as f32 } else { (sx - ox) as f32 },
+            x: if flip {
+                (sx + ox) as f32
+            } else {
+                (sx - ox) as f32
+            },
             y: (sy - oy) as f32,
             w: if flip { -(w as f32) } else { w as f32 },
             h: h as f32,
@@ -1210,8 +1299,7 @@ fn taylor_sin(x: f64) -> f64 {
                 + x2 * (-1.0 / 5040.0
                     + x2 * (1.0 / 362880.0
                         + x2 * (-1.0 / 39916800.0
-                            + x2 * (1.0 / 6227020800.0
-                                + x2 * (-1.0 / 1307674368000.0))))))))
+                            + x2 * (1.0 / 6227020800.0 + x2 * (-1.0 / 1307674368000.0))))))))
 }
 
 fn spawn_bullet(c: &mut StepCtx, x: f64, y: f64, dir: f64) {
@@ -1241,7 +1329,13 @@ fn spawn_bullet(c: &mut StepCtx, x: f64, y: f64, dir: f64) {
 }
 
 // bullet Step_0 + Step_2 (despawn out of view) + alarm
-pub fn bullet_step(b: &mut Bullet, rng: &mut GmRng, fx: &mut [Fx; FX_MAX], fx_seq: &mut u32, view_y: i32) {
+pub fn bullet_step(
+    b: &mut Bullet,
+    rng: &mut GmRng,
+    fx: &mut [Fx; FX_MAX],
+    fx_seq: &mut u32,
+    view_y: i32,
+) {
     if !b.alive {
         return;
     }
@@ -1273,7 +1367,10 @@ pub fn bullet_step(b: &mut Bullet, rng: &mut GmRng, fx: &mut [Fx; FX_MAX], fx_se
         let px = b.x + xsp * i as f64 / steps as f64;
         let py = b.y + ysp * i as f64 / steps as f64;
         let pt = (px as i32, px as i32, py as i32, py as i32);
-        if crate::room_menu_gen::MENU_WALL_RECTS.iter().any(|r| pt.0 <= r.2 && pt.1 >= r.0 && pt.2 <= r.3 && pt.3 >= r.1) {
+        if crate::room_menu_gen::MENU_WALL_RECTS
+            .iter()
+            .any(|r| pt.0 <= r.2 && pt.1 >= r.0 && pt.2 <= r.3 && pt.3 >= r.1)
+        {
             // walk-to-contact: position lands at the wall edge; then destroy
             b.x = px;
             b.y = py;
@@ -1284,14 +1381,18 @@ pub fn bullet_step(b: &mut Bullet, rng: &mut GmRng, fx: &mut [Fx; FX_MAX], fx_se
     if hit {
         // scrEffectSpawn(x, y, hitWallFx=101, 0.5, 0, 0): depth 0 — drawn in
         // front of the bench (1000), behind the player (-50000)
-        fx_spawn_seq(fx, fx_seq, Fx {
-            alive: true,
-            kind: 5,
-            x: b.x,
-            y: b.y,
-            image_speed: 0.5,
-            ..Fx::zeroed()
-        });
+        fx_spawn_seq(
+            fx,
+            fx_seq,
+            Fx {
+                alive: true,
+                kind: 5,
+                x: b.x,
+                y: b.y,
+                image_speed: 0.5,
+                ..Fx::zeroed()
+            },
+        );
         b.alive = false;
         return;
     }

@@ -3,7 +3,7 @@ pub const ATLAS_W: u32 = 1024;
 pub const ATLAS_H: u32 = 1024;
 pub fn sprite_rect(sprite: u16, frame: u16) -> (u32, u32, u32, u32) {
     match (sprite, frame) {
-        (998, _) => (258, 678, 4, 4), // solid white fill
+        (998, _) => (258, 678, 4, 4),   // solid white fill
         (997, _) => (752, 332, 16, 16), // tileCavern filler subrect (48,48,16,16)
         (1, 0) => (96, 508, 32, 32),
         (1, 1) => (128, 508, 32, 32),
@@ -268,7 +268,8 @@ pub fn sprite_rect(sprite: u16, frame: u16) -> (u32, u32, u32, u32) {
         (733, 10) => (472, 660, 8, 8),
         (733, 11) => (480, 660, 8, 8),
         (739, 0) => (704, 284, 64, 112),
-        (999, c) => { // font0 glyph, frame = ascii
+        (999, c) => {
+            // font0 glyph, frame = ascii
             match c {
                 32 => (2, 678, 8, 10),
                 33 => (140, 786, 3, 10),

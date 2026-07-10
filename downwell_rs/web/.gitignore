@@ -1,1 +1,5 @@
-www/web.wasm
+www/web.js
+www/web_bg.wasm
+www/web_bg.wasm.d.ts
+www/web.d.ts
+www/atlas.png

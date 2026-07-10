@@ -4,6 +4,7 @@ into one RGBA atlas; generate Rust tables.
 
 Outputs:
   assets/atlas.rgba          raw RGBA8 (ATLAS_W x ATLAS_H)
+  assets/atlas.png           compressed browser/GPU upload asset
   sim/src/sprites_gen.rs     (id -> origin, size, nframes) + font metrics
   app/src/atlas_gen.rs       (id, frame) -> atlas pixel rect
 """
@@ -70,6 +71,7 @@ atlas.paste(Image.new('RGBA', (8, 8), (255, 255, 255, 255)), (wx, wy))
 
 os.makedirs(f'{DST}/assets', exist_ok=True)
 open(f'{DST}/assets/atlas.rgba', 'wb').write(atlas.tobytes())
+atlas.save(f'{DST}/assets/atlas.png', optimize=True, compress_level=9)
 
 # ---- font0 glyphs ----
 glyphs = {}

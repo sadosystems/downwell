@@ -5,7 +5,9 @@
 // grass_px.bin: 4 variants x 4 frames x 16x24, 0=transparent 1=dark 2=white 3=red
 
 pub const FRAMES: [u32; 4] = [830, 900, 950, 998];
-pub const GRASS_ORDER: [i32; 14] = [48, 240, 32, 176, 400, 256, 224, 144, 160, 16, 0, 192, 416, 208];
+pub const GRASS_ORDER: [i32; 14] = [
+    48, 240, 32, 176, 400, 256, 224, 144, 160, 16, 0, 192, 416, 208,
+];
 
 pub struct Tables {
     pub band: Vec<u8>,

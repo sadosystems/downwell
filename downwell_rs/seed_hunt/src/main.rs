@@ -10,10 +10,8 @@ use score::{Tables, GRASS_ORDER};
 
 // gdb dump at 0xb46fe0 / index 0xb47020, quiescent through the splash
 const STATE: [u32; 16] = [
-    0x03277882, 0x664cd791, 0x625e3826, 0xa662c15f,
-    0xf2e60b48, 0xb99d92fc, 0xbf4bfb7c, 0x69d19cda,
-    0x830e5fd9, 0x6ae8ccd1, 0x664788da, 0xf2b911b2,
-    0xfecdc18b, 0xb0e04cde, 0x109c918c, 0xb992732d,
+    0x03277882, 0x664cd791, 0x625e3826, 0xa662c15f, 0xf2e60b48, 0xb99d92fc, 0xbf4bfb7c, 0x69d19cda,
+    0x830e5fd9, 0x6ae8ccd1, 0x664788da, 0xf2b911b2, 0xfecdc18b, 0xb0e04cde, 0x109c918c, 0xb992732d,
 ];
 const INDEX: usize = 3;
 
@@ -81,7 +79,9 @@ impl Rng {
 }
 
 fn main() {
-    let dir = std::env::args().nth(1).expect("usage: seed_hunt <tables dir>");
+    let dir = std::env::args()
+        .nth(1)
+        .expect("usage: seed_hunt <tables dir>");
     let tables = Tables::load(&dir);
     for k in 0..400usize {
         let mut r = Rng { s: STATE, i: INDEX };

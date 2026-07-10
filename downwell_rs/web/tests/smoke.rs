@@ -19,7 +19,7 @@ fn dump(name: &str) {
 }
 
 #[test]
-fn both_views_render_without_splash() {
+fn cinema_renders_without_splash() {
     // cinema (default): movie crop, no HUD/borders
     web::boot(0);
     web::frame(0); // frame 1: must already be in the menu (splash skipped)
@@ -32,7 +32,7 @@ fn both_views_render_without_splash() {
         web::frame(0);
     }
     dump("web_cin_f600.ppm");
-    // walk right: camera moves; stars must stay locked to the scene
+    // Walk right through the widened web room.
     for _ in 0..150 {
         web::frame(4);
     }
@@ -47,12 +47,15 @@ fn both_views_render_without_splash() {
     for _ in 0..300 {
         web::frame(4);
     }
-    eprintln!("[perf] {:.2} ms/frame", t0.elapsed().as_secs_f64() * 1000.0 / 300.0);
+    eprintln!(
+        "[perf] {:.2} ms/frame",
+        t0.elapsed().as_secs_f64() * 1000.0 / 300.0
+    );
 
-    // classic: full GM window
+    // Rebooting resets the simulation and remains safe after prolonged use.
     web::boot(1);
     for _ in 0..600 {
         web::frame(0);
     }
-    dump("web_classic_f600.ppm");
+    dump("web_reboot_f600.ppm");
 }

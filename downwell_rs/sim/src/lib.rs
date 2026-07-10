@@ -58,8 +58,8 @@ pub struct DrawCmd {
     pub w: f32,
     pub h: f32,
     pub color: u32, // 0xRRGGBBAA tint
-    pub pal: u32, // 1 = inside GM shader block (DOWNWELL palette shader)
-    pub rot: f32, // image_angle degrees CCW (GM), rotates around quad center
+    pub pal: u32,   // 1 = inside GM shader block (DOWNWELL palette shader)
+    pub rot: f32,   // image_angle degrees CCW (GM), rotates around quad center
 }
 
 #[repr(C)]
@@ -71,7 +71,17 @@ pub struct DrawList {
 impl DrawList {
     pub const EMPTY: DrawList = DrawList {
         n: 0,
-        cmds: [DrawCmd { sprite: 0, frame: 0, x: 0.0, y: 0.0, w: 0.0, h: 0.0, color: 0, pal: 0, rot: 0.0 }; MAX_DRAW],
+        cmds: [DrawCmd {
+            sprite: 0,
+            frame: 0,
+            x: 0.0,
+            y: 0.0,
+            w: 0.0,
+            h: 0.0,
+            color: 0,
+            pal: 0,
+            rot: 0.0,
+        }; MAX_DRAW],
     };
     pub fn clear(&mut self) {
         self.n = 0;
@@ -182,7 +192,11 @@ impl GameState {
             sky_y: 407,
             fx_seq: 0,
             no_control: false,
-            raw_prev: Input { space: false, left: false, right: false },
+            raw_prev: Input {
+                space: false,
+                left: false,
+                right: false,
+            },
         }
     }
     // boot: scrInitialize -> randomize(). GM's randomize seeds from elapsed
@@ -221,7 +235,7 @@ fn goto_menu(gs: &mut GameState) {
     gs.scene.create(&mut r); // grass/trees in room instance order
     core::mem::swap(&mut r, &mut gs.rng);
     gs.no_control = true; // rm_menu creation code
-    // rm_menu Create: instance_create(ditherFade): image_speed=0, alarm[0]=30
+                          // rm_menu Create: instance_create(ditherFade): image_speed=0, alarm[0]=30
     gs.fade_alive = true;
     gs.fade_alarm = 30;
     gs.fade_index = 0.0;
@@ -287,7 +301,18 @@ pub fn tick(gs: &mut GameState, input: Input) {
             }
             // begin step: player Step_1
             {
-                let GameState { rng, fx, bullets, pl, cam, meter_jiggle, inputs, no_control, fx_seq, .. } = gs;
+                let GameState {
+                    rng,
+                    fx,
+                    bullets,
+                    pl,
+                    cam,
+                    meter_jiggle,
+                    inputs,
+                    no_control,
+                    fx_seq,
+                    ..
+                } = gs;
                 let mut ctx = player::StepCtx {
                     rng,
                     fx,
@@ -312,7 +337,18 @@ pub fn tick(gs: &mut GameState, input: Input) {
             }
             // normal steps: player Step_0, camMain, bullets, casings
             {
-                let GameState { rng, fx, bullets, pl, cam, meter_jiggle, inputs, no_control, fx_seq, .. } = gs;
+                let GameState {
+                    rng,
+                    fx,
+                    bullets,
+                    pl,
+                    cam,
+                    meter_jiggle,
+                    inputs,
+                    no_control,
+                    fx_seq,
+                    ..
+                } = gs;
                 let mut ctx = player::StepCtx {
                     rng,
                     fx,
@@ -363,7 +399,12 @@ pub fn draw(gs: &mut GameState, dl: &mut DrawList) {
     sprite_ext(dl, spr::TABLET_BORDER, 0, -2, 0);
     sprite_flipx(dl, spr::TABLET_BORDER, 0, 162, 0);
     {
-        let GameState { hud, meter_jiggle, pl, .. } = gs;
+        let GameState {
+            hud,
+            meter_jiggle,
+            pl,
+            ..
+        } = gs;
         hud::draw_hud_4x3(dl, hud, meter_jiggle, pl.stammo, pl.p_fired);
     }
     let hud_end = dl.n;
@@ -446,7 +487,7 @@ fn app_surface(gs: &mut GameState, dl: &mut DrawList) {
         }
         draw_fx_group(&gs.fx, &gs.bullets, dl, vx, vy, 0);
         gs.pl.draw(dl, vx, vy); // depth -50000
-        // scrEffectSpawn fx: recharge -50500, muzzle -60000 (in front)
+                                // scrEffectSpawn fx: recharge -50500, muzzle -60000 (in front)
         draw_fx_group(&gs.fx, &gs.bullets, dl, vx, vy, 1);
         gs.scene.draw_grass(dl, vx, vy); // depth -100000
         menu::draw_dissolve(dl, gs.fade_index, gs.fade_alive);
@@ -455,7 +496,11 @@ fn app_surface(gs: &mut GameState, dl: &mut DrawList) {
 
 fn floor_f64_i(v: f64) -> i32 {
     let t = v as i32;
-    if (t as f64) > v { t - 1 } else { t }
+    if (t as f64) > v {
+        t - 1
+    } else {
+        t
+    }
 }
 
 // objTitle Step_0 (menu): trigger when centered in view, sparkle RNG chain
@@ -534,7 +579,16 @@ fn title_alarms(gs: &mut GameState) {
 }
 
 // parentMovingFx: dir 90 -> xsp 0, ysp -speed; anim-end kill
-fn spawn_sparkle(fx: &mut [player::Fx; player::FX_MAX], seq: &mut u32, x: f64, y: f64, which: u32, img_sp: f32, vel: f64, fresh: bool) {
+fn spawn_sparkle(
+    fx: &mut [player::Fx; player::FX_MAX],
+    seq: &mut u32,
+    x: f64,
+    y: f64,
+    which: u32,
+    img_sp: f32,
+    vel: f64,
+    fresh: bool,
+) {
     *seq += 1;
     for slot in fx.iter_mut() {
         if !slot.alive {
@@ -558,7 +612,14 @@ fn spawn_sparkle(fx: &mut [player::Fx; player::FX_MAX], seq: &mut u32, x: f64, y
 // fx + bullet draws split by GM depth group:
 // group 0 = depth 0 (jump fx kinds 0/1, casings, bullets) — behind the player
 // group 1 = scrEffectSpawn depths (recharge -50500, muzzle -60000) — in front
-fn draw_fx_group(fx: &[player::Fx; player::FX_MAX], bullets: &[player::Bullet; player::BUL_MAX], dl: &mut DrawList, vx: i32, vy: i32, group: u8) {
+fn draw_fx_group(
+    fx: &[player::Fx; player::FX_MAX],
+    bullets: &[player::Bullet; player::BUL_MAX],
+    dl: &mut DrawList,
+    vx: i32,
+    vy: i32,
+    group: u8,
+) {
     // GM draws same-depth instances oldest-first: order by spawn seq, not
     // pool slot (slot reuse permutes overlap winners otherwise)
     let mut order: [u8; player::FX_MAX] = [0; player::FX_MAX];
@@ -606,19 +667,59 @@ fn draw_fx_group(fx: &[player::Fx; player::FX_MAX], bullets: &[player::Bullet; p
         if f.kind == 0 {
             // draws both mirrors unless emitTo picks one
             if f.emit_to != 1 {
-                dl.push(DrawCmd { sprite: spr_id, frame: f.image_index as u16, x: (sx - ox) as f32, y: (sy - oy) as f32, w: w as f32, h: h as f32, color: C_WHITE, pal: 2, rot: 0.0 });
+                dl.push(DrawCmd {
+                    sprite: spr_id,
+                    frame: f.image_index as u16,
+                    x: (sx - ox) as f32,
+                    y: (sy - oy) as f32,
+                    w: w as f32,
+                    h: h as f32,
+                    color: C_WHITE,
+                    pal: 2,
+                    rot: 0.0,
+                });
             }
             if f.emit_to != -1 {
-                dl.push(DrawCmd { sprite: spr_id, frame: f.image_index as u16, x: (sx + ox) as f32, y: (sy - oy) as f32, w: -(w as f32), h: h as f32, color: C_WHITE, pal: 2, rot: 0.0 });
+                dl.push(DrawCmd {
+                    sprite: spr_id,
+                    frame: f.image_index as u16,
+                    x: (sx + ox) as f32,
+                    y: (sy - oy) as f32,
+                    w: -(w as f32),
+                    h: h as f32,
+                    color: C_WHITE,
+                    pal: 2,
+                    rot: 0.0,
+                });
             }
         } else {
-            dl.push(DrawCmd { sprite: spr_id, frame: f.image_index as u16, x: (sx - ox) as f32, y: (sy - oy) as f32, w: w as f32, h: h as f32, color: C_WHITE, pal: 2, rot: if f.kind == 3 { f.angle as f32 } else { 0.0 } });
+            dl.push(DrawCmd {
+                sprite: spr_id,
+                frame: f.image_index as u16,
+                x: (sx - ox) as f32,
+                y: (sy - oy) as f32,
+                w: w as f32,
+                h: h as f32,
+                color: C_WHITE,
+                pal: 2,
+                rot: if f.kind == 3 { f.angle as f32 } else { 0.0 },
+            });
         }
     }
     if group == 0 {
         for b in bullets.iter() {
             if b.alive {
-                dl.push(DrawCmd { sprite: 459, frame: b.image_index as u16, x: (player::gm_round(b.x) - vx - 8) as f32, y: (player::gm_round(b.y) - vy - 8) as f32, w: 16.0, h: 16.0, color: C_WHITE, pal: 2, rot: b.b_dir as f32 });
+                dl.push(DrawCmd {
+                    sprite: 459,
+                    frame: b.image_index as u16,
+                    x: (player::gm_round(b.x) - vx - 8) as f32,
+                    y: (player::gm_round(b.y) - vy - 8) as f32,
+                    w: 16.0,
+                    h: 16.0,
+                    color: C_WHITE,
+                    pal: 2,
+                    rot: b.b_dir as f32,
+                });
             }
         }
     }
@@ -679,7 +780,10 @@ fn fx_steps(fx: &mut [player::Fx; player::FX_MAX]) {
             }
             let next = (f.x + f.xsp) as i32;
             let pt = (next, next, f.y as i32, f.y as i32);
-            if room_menu_gen::MENU_WALL_RECTS.iter().any(|r| pt.0 <= r.2 && pt.1 >= r.0 && pt.2 <= r.3 && pt.3 >= r.1) {
+            if room_menu_gen::MENU_WALL_RECTS
+                .iter()
+                .any(|r| pt.0 <= r.2 && pt.1 >= r.0 && pt.2 <= r.3 && pt.3 >= r.1)
+            {
                 f.xsp *= -1.0;
                 f.xsp *= 0.7;
             }
@@ -750,7 +854,15 @@ pub(crate) fn sprite_flipx(dl: &mut DrawList, s: u16, frame: u16, x: i32, y: i32
 }
 
 // draw_sprite_stretched (origin ignored by GM for stretched draws)
-pub(crate) fn sprite_stretched(dl: &mut DrawList, s: u16, frame: u16, x: i32, y: i32, w: f64, h: f64) {
+pub(crate) fn sprite_stretched(
+    dl: &mut DrawList,
+    s: u16,
+    frame: u16,
+    x: i32,
+    y: i32,
+    w: f64,
+    h: f64,
+) {
     if w == 0.0 || h == 0.0 {
         return;
     }
