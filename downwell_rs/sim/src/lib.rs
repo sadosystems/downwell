@@ -475,7 +475,8 @@ fn title_anim_tail(gs: &mut GameState) {
                 let which = gs.rng.choose_index(2);
                 let fy = gs.title_y + gs.rng.random_range(-16.0, 16.0);
                 let fx = 328.0 + gs.rng.random_range(-66.0, 66.0);
-                spawn_sparkle(&mut gs.fx, fx, fy, which, sp, 0.1);
+                // spawned mid-Step-dispatch: no Step of its own this frame
+                spawn_sparkle(&mut gs.fx, fx, fy, which, sp, 0.1, true);
             }
         }
         if gs.title_idx > 9.0 {
@@ -508,7 +509,8 @@ fn title_alarms(gs: &mut GameState) {
                 let which = gs.rng.choose_index(2);
                 let fy = gs.title_y + gs.rng.random_range(-16.0, 16.0);
                 let fx = 328.0 + gs.rng.random_range(-70.0, 70.0);
-                spawn_sparkle(&mut gs.fx, fx, fy, which, sp, vel);
+                // spawned in the ALARM phase: its Step_0 runs later this frame
+                spawn_sparkle(&mut gs.fx, fx, fy, which, sp, vel, false);
             }
             gs.title_alarm1 = 75;
         }
@@ -522,7 +524,7 @@ fn title_alarms(gs: &mut GameState) {
 }
 
 // parentMovingFx: dir 90 -> xsp 0, ysp -speed; anim-end kill
-fn spawn_sparkle(fx: &mut [player::Fx; player::FX_MAX], x: f64, y: f64, which: u32, img_sp: f32, vel: f64) {
+fn spawn_sparkle(fx: &mut [player::Fx; player::FX_MAX], x: f64, y: f64, which: u32, img_sp: f32, vel: f64, fresh: bool) {
     for slot in fx.iter_mut() {
         if !slot.alive {
             *slot = player::Fx {
@@ -533,7 +535,7 @@ fn spawn_sparkle(fx: &mut [player::Fx; player::FX_MAX], x: f64, y: f64, which: u
                 ysp: -vel,
                 image_speed: img_sp,
                 angle: 90, // emitMovingFx: image_angle = arg4 = 90
-                fresh: true, // spawned mid-Step: no drift until next frame
+                fresh,
                 ..player::Fx::zeroed()
             };
             return;
@@ -630,11 +632,14 @@ fn fx_steps(fx: &mut [player::Fx; player::FX_MAX]) {
             continue;
         }
         if f.kind == 6 || f.kind == 7 {
-            // parentMovingFx: drift — GMS2 appends mid-dispatch spawns to the
-            // current event iteration, so the spawn frame DOES step
-            f.fresh = false;
-            f.x += f.xsp;
-            f.y += f.ysp;
+            // parentMovingFx: no drift on the spawn frame (instances created
+            // mid-Step-dispatch don't run that event this frame)
+            if f.fresh {
+                f.fresh = false;
+            } else {
+                f.x += f.xsp;
+                f.y += f.ysp;
+            }
         }
         if f.kind == 2 {
             // bullet_casing Step_0

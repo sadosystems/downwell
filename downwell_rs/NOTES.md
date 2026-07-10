@@ -353,3 +353,13 @@ in-argument RNG draws must be consumed in reverse (fixed both sparkle sites; 233
   center-rotation shader for these quads (b=wrong-as-implemented). OPEN: characterize the 1px —
   ask user whether B's sparkles look ROTATED or TRANSLATED vs A; if rotated, implement GM's exact
   rotation quad math (corners = pos + R*(corner-origin), y-down CW sign?) instead of shader-center.
+
+## Spawn-phase stepping law (CONFIRMED empirically, walk tape 23 -> 6)
+Instances created during the STEP dispatch do NOT run their own Step that frame; instances
+created during the ALARM phase DO (Step dispatch comes after Alarms). Sparkles: trickle
+(title Step_0) fresh=true, burst (title Alarm_0) fresh=false. Begin-step spawns (casings,
+bullets from player Step_1) also step same-frame (Step_0 phase follows) — already correct.
+Walk tape now 6/1099, first 992 (the burst moment itself) — remaining residual under
+investigation via user eyeballs. NOTE: one flaky geist run showed first=10 (boot-frame
+capture misalignment, ±1 libTAS nondeterminism) — RERUN before believing any regression
+that starts in an era the change cannot touch.

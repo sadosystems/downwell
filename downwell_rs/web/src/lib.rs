@@ -25,10 +25,18 @@ const CLASSIC_H: usize = 568;
 const SCALE: f32 = 2.0;
 const CLASSIC_OFF_X: f32 = 220.0;
 
-// cinema view, GUI units: double the surface width (room is 416 wide, fits),
-// exactly the surface height — so vertically it frames what classic frames
-const CIN_W: i32 = 320;
+// cinema view, GUI units: the full 416-wide room (the frame locks — no
+// horizontal panning), exactly the surface height — so vertically it frames
+// what classic frames
+const CIN_W: i32 = 416;
 const CIN_H: i32 = 284;
+
+// framebuffer holds whichever mode is larger
+const FB_LEN: usize = {
+    let cin = (CIN_W as usize * 2) * (CIN_H as usize * 2);
+    let classic = CLASSIC_W * CLASSIC_H;
+    (if cin > classic { cin } else { classic }) * 4
+};
 
 static ATLAS: &[u8] = include_bytes!("../../assets/atlas.rgba");
 
@@ -45,7 +53,7 @@ struct View {
 struct Web {
     gs: sim::GameState,
     dl: sim::DrawList,
-    fb: [u8; CLASSIC_W * CLASSIC_H * 4], // max of both modes
+    fb: [u8; FB_LEN],
     classic: bool,
 }
 
@@ -54,7 +62,7 @@ struct Web {
 static mut WEB: Web = Web {
     gs: sim::GameState::new(),
     dl: sim::DrawList::EMPTY,
-    fb: [0; CLASSIC_W * CLASSIC_H * 4],
+    fb: [0; FB_LEN],
     classic: false,
 };
 
