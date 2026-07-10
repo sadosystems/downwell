@@ -87,6 +87,14 @@ pub fn cinema(gs: &GameState, src: &DrawList, out: &mut Vec<DrawCmd>) {
             continue;
         }
         let mut c2 = *c;
+        // rmMenu's original surface ends use left/right edge-cap autotiles
+        // (centers -32 and 448). They become interior tiles in the widened
+        // web room, so use the same flat frame as the extension at each join.
+        let world_x = c.x as i32 + vx;
+        let world_y = c.y as i32 + vy;
+        if c.sprite == 76 && world_y == 520 && matches!(world_x, -40 | 440) {
+            c2.frame = surf_frame;
+        }
         c2.x += dx;
         c2.y += dy;
         out.push(c2);
